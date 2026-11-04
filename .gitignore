@@ -1,0 +1,4 @@
+audit/reports/
+*.iso
+*.deb
+/iso/build/
