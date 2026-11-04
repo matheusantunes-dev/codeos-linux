@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NexoDev OS — Módulo 0: auditoria do sistema.
+# CodeOS — Módulo 0: auditoria do sistema.
 # Somente leitura: não instala, não altera e não grava nada fora do diretório de relatórios.
 #
 # Uso:
@@ -254,7 +254,7 @@ sec_display() {
   ((n_mon < 2)) && finding info "Só $n_mon monitor conectado: conecte os externos e rode de novo para mapear os perfis."
   lsmod | grep -q '^nvidia ' && finding info "Driver NVIDIA proprietário: validar gamma por CRTC no Módulo 4."
   procs=$(pgrep -x 'redshift|redshift-gtk|gammastep|xiccd|csd-color' | wc -l)
-  ((procs > 0)) && finding info "Há serviços de cor/gamma ativos: serão desligados na sessão NexoDev."
+  ((procs > 0)) && finding info "Há serviços de cor/gamma ativos: serão desligados na sessão CodeOS."
 }
 
 # ───────────────────────────── 4. áudio e Bluetooth ─────────────────────────────
@@ -738,7 +738,7 @@ write_summary() {
     [wireplumber]="WirePlumber" [bluetooth]="Bluetooth" [usb]="USB" [storage]="Storage"
     [rootfs]="FS da raiz" [backup]="Backup"
   )
-  printf '# Auditoria NexoDev OS — %s\n\n' "$(hostname -s)"
+  printf '# Auditoria CodeOS — %s\n\n' "$(hostname -s)"
   printf '_Gerado em %s por audit.sh v%s. Somente leitura; endereços MAC ocultados._\n' \
     "$(date '+%Y-%m-%d %H:%M')" "$AUDIT_VERSION"
   h2 "Resumo"
@@ -773,7 +773,7 @@ main() {
   BODY=$(mktemp "$OUT_DIR/.body.XXXXXX")
   trap 'rm -f "$BODY"' EXIT
 
-  echo "Auditoria NexoDev OS v$AUDIT_VERSION (somente leitura)" >&2
+  echo "Auditoria CodeOS v$AUDIT_VERSION (somente leitura)" >&2
   {
     sec_system
     sec_cpu_mem

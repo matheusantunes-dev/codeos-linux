@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NexoDev OS — Módulo 0: aponta o Timeshift para o disco de backup e cria o snapshot "antes".
+# CodeOS — Módulo 0: aponta o Timeshift para o disco de backup e cria o snapshot "antes".
 # Usa o mesmo disco definido em ./backup/backup.sh init.
 #
 # Uso:
@@ -9,7 +9,7 @@
 set -uo pipefail
 export LC_ALL=C.UTF-8
 
-CONF="$HOME/.config/nexodev/backup.conf"
+CONF="$HOME/.config/codeos/backup.conf"
 JSON=/etc/timeshift/timeshift.json
 SNAPSHOT=1
 
@@ -42,7 +42,7 @@ else
   info "Destino atual: ${current:-nenhum}$([[ $current == "$(findmnt -n -o UUID /)" ]] && echo ' (o SSD do sistema)')"
   info "Novo destino:  $uuid ($(lsblk -no NAME,SIZE,MODEL "/dev/disk/by-uuid/$uuid" | head -n1))"
   confirm "Trocar o destino do Timeshift?" || die "cancelado."
-  bak="$JSON.nexodev-bak-$(date +%Y%m%d-%H%M%S)"
+  bak="$JSON.codeos-bak-$(date +%Y%m%d-%H%M%S)"
   sudo cp -a "$JSON" "$bak" || die "falha ao copiar $JSON."
   sudo python3 -I - "$JSON" "$uuid" <<'PY' || die "falha ao gravar $JSON (cópia original em $bak)."
 import json, os, sys
@@ -66,7 +66,7 @@ info "Snapshots agendados são pulados enquanto o disco de backup estiver descon
 
 if ((SNAPSHOT)); then
   info "Criando snapshot sob demanda (o primeiro no disco novo copia o sistema inteiro)"
-  sudo timeshift --create --comments "NexoDev M0: estado antes das mudanças" --tags O ||
+  sudo timeshift --create --comments "CodeOS M0: estado antes das mudanças" --tags O ||
     die "falha ao criar o snapshot."
   sudo timeshift --list
 fi

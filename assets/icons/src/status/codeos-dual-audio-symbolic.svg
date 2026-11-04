@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 16 16">
+  <defs>
+    <g id="phone">
+      <path d="M2.5 9 V8.5 A3.5 3.5 0 0 1 9.5 8.5 V9" fill="none"/>
+      <rect x="1.25" y="7.5" width="2.5" height="4.5" rx="1"/>
+      <rect x="8.25" y="7.5" width="2.5" height="4.5" rx="1"/>
+    </g>
+    <path id="hull" d="M2.5 9 V8.5 A3.5 3.5 0 0 1 9.5 8.5 V12 H2.5 Z"/>
+    <!-- recorta o fone de trás onde o da frente passa -->
+    <mask id="cut" maskUnits="userSpaceOnUse" x="0" y="0" width="16" height="16">
+      <rect width="16" height="16" fill="#fff"/>
+      <g transform="translate(4.5 3.5)" fill="#000" stroke="#000" stroke-width="3.5" stroke-linejoin="round">
+        <use xlink:href="#hull"/>
+        <use xlink:href="#phone"/>
+      </g>
+    </mask>
+  </defs>
+  <g fill="{{symbolic}}" stroke="{{symbolic}}" stroke-width="1.5" stroke-linecap="round">
+    <use xlink:href="#phone" mask="url(#cut)"/>
+    <use xlink:href="#phone" transform="translate(4.5 3.5)"/>
+  </g>
+</svg>

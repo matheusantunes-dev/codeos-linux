@@ -1,0 +1,60 @@
+# Tema de ícones do CodeOS: paleta e lista de ícones.
+# Depois de editar, rode: python3 assets/icons/build.py
+
+[theme]
+name = "CodeOS"
+comment = "Ícones do CodeOS"
+inherits = "Papirus,hicolor"
+
+[palette]
+primary = "#1E54BC"
+primary-dark = "#17439A"
+primary-light = "#3A6FD2"
+glyph = "#0E2A66"
+accent = "#05C0DF"
+accent-light = "#5FD8EC"
+paper = "#FFFFFF"
+symbolic = "#2E3436"
+
+# ── ícones desenhados um a um ──
+
+[[icon]]
+src = "src/apps/codeos.svg"
+context = "apps"
+name = "codeos"
+# start-here e o do Whisker Menu fazem do logo o botão do menu iniciar
+aliases = ["distributor-logo", "distributor-logo-codeos", "start-here", "org.xfce.panel.whiskermenu"]
+
+[[icon]]
+src = "src/apps/utilities-terminal.svg"
+context = "apps"
+name = "utilities-terminal"
+aliases = ["terminal", "org.xfce.terminal", "xfce4-terminal"]
+
+[[icon]]
+src = "src/apps/codeos-nightlight.svg"
+context = "apps"
+name = "codeos-nightlight"
+
+[[icon]]
+src = "src/status/codeos-dual-audio-symbolic.svg"
+context = "status"
+name = "codeos-dual-audio-symbolic"
+symbolic = true
+# o áudio duplo é um item do Blueman (menu do dispositivo e da bandeja), não um app próprio
+
+# ── pastas: modelo + glifo (glyph vazio = pasta genérica) ──
+
+[[folder]]
+name = "folder"
+glyph = ""
+
+[[folder]]
+name = "folder-projects"
+glyph = "projects"
+aliases = ["folder-development", "folder-code"]
+
+[[folder]]
+name = "folder-download"
+glyph = "download"
+aliases = ["folder-downloads"]

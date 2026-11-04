@@ -2,3 +2,5 @@ audit/reports/
 *.iso
 *.deb
 /iso/build/
+assets/icons/build/
+assets/boot/build/

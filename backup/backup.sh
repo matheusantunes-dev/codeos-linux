@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NexoDev OS — Módulo 0: backup do /home com restic no disco externo.
+# CodeOS — Módulo 0: backup do /home com restic no disco externo.
 # Independente do Ansible de propósito: o backup precisa funcionar (e ser restaurável)
 # mesmo que o resto da automação quebre.
 #
@@ -14,18 +14,19 @@ set -uo pipefail
 export LC_ALL=C.UTF-8
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONF_DIR="$HOME/.config/nexodev"
+CONF_DIR="$HOME/.config/codeos"
 CONF="$CONF_DIR/backup.conf"
 PASS_FILE="$CONF_DIR/restic-password"
-STATE_DIR="$HOME/.local/state/nexodev"
+STATE_DIR="$HOME/.local/state/codeos"
 VERIFIED_STAMP="$STATE_DIR/backup-verified"
 EXCLUDES="$SCRIPT_DIR/excludes.txt"
-REPO_SUBDIR="nexodev-backup/restic-home"
+REPO_SUBDIR="codeos-backup/restic-home"
 # Retenção: o suficiente para voltar a qualquer ponto da migração.
 KEEP=(--keep-daily 7 --keep-weekly 4 --keep-monthly 12)
 SAMPLE_SIZE=25
 DEST_UUID=""
 DEST_MNT=""
+VERIFY_TMP=""
 
 has()  { command -v "$1" >/dev/null 2>&1; }
 info() { printf '  → %s\n' "$*"; }
@@ -165,9 +166,9 @@ cmd_run() {
   info "Snapshot de $HOME → $RESTIC_REPOSITORY (o primeiro demora; os seguintes só enviam diferenças)"
   nice -n 10 ionice -c3 restic backup "$HOME" \
     --one-file-system --exclude-caches --exclude-file "$EXCLUDES" \
-    --tag nexodev --host "$(hostname -s)" || die "o backup falhou."
+    --tag codeos --host "$(hostname -s)" || die "o backup falhou."
   info "Aplicando retenção (${KEEP[*]})"
-  restic forget --tag nexodev "${KEEP[@]}" --prune || warn "retenção falhou (o snapshot novo está salvo)."
+  restic forget --tag codeos "${KEEP[@]}" --prune || warn "retenção falhou (o snapshot novo está salvo)."
   info "Próximo passo: $0 verify"
 }
 
@@ -204,12 +205,12 @@ PY
 
 cmd_verify() {
   open_repo
-  local latest id time tmp f ok=0
+  local latest id time f ok=0
   local -a sample=() inc=()
   info "Checando estrutura e 10% dos dados do repositório"
   restic check --read-data-subset=10% || die "restic check falhou: NÃO siga para os próximos módulos."
 
-  latest=$(restic snapshots --tag nexodev --json | python3 -I -c '
+  latest=$(restic snapshots --tag codeos --json | python3 -I -c '
 import json, sys
 s = sorted(json.load(sys.stdin), key=lambda x: x["time"])
 print(s[-1]["short_id"], s[-1]["time"]) if s else None')
@@ -221,11 +222,12 @@ print(s[-1]["short_id"], s[-1]["time"]) if s else None')
   ((${#sample[@]} > 0)) || die "amostra vazia: nada a comparar."
   for f in "${sample[@]}"; do inc+=(--include "$f"); done
 
-  tmp=$(mktemp -d "$DEST_MNT/${REPO_SUBDIR%/*}/verify.XXXXXX")
-  trap 'rm -rf -- "$tmp"' EXIT
-  restic restore "$id" --target "$tmp" "${inc[@]}" >/dev/null || die "falha ao restaurar a amostra."
+  # global: o trap roda depois que a função já terminou
+  VERIFY_TMP=$(mktemp -d "$DEST_MNT/${REPO_SUBDIR%/*}/verify.XXXXXX")
+  trap 'rm -rf -- "$VERIFY_TMP"' EXIT
+  restic restore "$id" --target "$VERIFY_TMP" "${inc[@]}" >/dev/null || die "falha ao restaurar a amostra."
   for f in "${sample[@]}"; do
-    if cmp -s -- "$f" "$tmp$f"; then ((++ok)); else warn "diferente após restaurar: $f"; fi
+    if cmp -s -- "$f" "$VERIFY_TMP$f"; then ((++ok)); else warn "diferente após restaurar: $f"; fi
   done
   info "Amostra: $ok/${#sample[@]} arquivos idênticos"
   ((ok == ${#sample[@]})) || die "a verificação falhou."
@@ -237,7 +239,7 @@ print(s[-1]["short_id"], s[-1]["time"]) if s else None')
 
 cmd_status() {
   open_repo
-  restic snapshots --tag nexodev
+  restic snapshots --tag codeos
   restic stats --mode raw-data
   [[ -r $VERIFIED_STAMP ]] && { echo; cat "$VERIFIED_STAMP"; }
 }

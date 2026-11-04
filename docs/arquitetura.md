@@ -14,17 +14,20 @@ Registro curto das decisões e do porquê. A primeira auditoria (2026-11-03) aju
 
 | # | Decisão | Motivo |
 |---|---|---|
-| D1 | Toda personalização vira `.deb` com config de sistema; o `$HOME` só recebe `~/.config/nexodev/` | O mesmo artefato serve ao notebook e à ISO; remoção limpa com `apt remove` |
+| D1 | Toda personalização vira `.deb` com config de sistema; o `$HOME` só recebe `~/.config/codeos/` | O mesmo artefato serve ao notebook e à ISO; remoção limpa com `apt remove` |
 | D2 | Xfce 4.18 em X11, Cinnamon mantido até a validação final | Rollback = trocar de sessão no LightDM |
 | D3 | Ansible local, um role por módulo, `--check --diff` + snapshot antes de cada um | Idempotência e reversibilidade |
 | D4 | Regras do WirePlumber em **Lua** (0.4.17) | Versão instalada; migrar para SPA-JSON só se o WirePlumber for para 0.5 |
 | D5 | Sink duplo declarativo (`module-combine-stream` em `pipewire.conf.d`) no lugar do combine criado em runtime | Sobrevive a reinícios e fica versionado; o existente (`fones_juntos_agora`) é a referência |
+| D5b | O áudio duplo é uma função do **Blueman** (2.4.4), não um app: plugin de manager (item "Adicionar ao áudio duplo" no menu do dispositivo, grupo `ACTIONS`) + plugin de applet (liga/desliga no menu da bandeja, ícone `codeos-dual-audio-symbolic`) | Fica onde o usuário já gerencia os fones; os plugins só chamam o `codeos-audio dual on/off` do Módulo 3 |
 | D6 | Sem compensação de latência nativa (PipeWire 1.0.5); ajuste manual de atraso por fone, se necessário | Evita PPA de terceiros no PipeWire; reavaliar se houver eco perceptível |
 | D7 | Luz noturna: daemon próprio com gamma por CRTC (XRandR), perfil por hash do EDID, brilho por DDC/CI | Hoje o `csd-color` aplica o mesmo gamma (0.44:1.0:2.0) nas duas saídas |
 | D8 | USB: autosuspend desligado para hubs/áudio/BT, quirks por VID:PID e watchdog de reset | Erros `-71` e resets repetidos no log do kernel |
 | D9 | Storage: nenhum cenário automático hoje (1 SSD interno); o Cenário 2 vale se o HDD for para a baia do DVD | O HDD está em gaveta USB, conta como externo |
 | D10 | Backup fora do SSD: restic no HDD externo + Timeshift com destino que não seja o SSD do sistema | Snapshots do Timeshift estão no próprio SSD do sistema |
-| D11 | ISO via Cubic sobre a ISO oficial Mint Xfce + repositório APT `nexodev` | Reproduzível e sem dados pessoais (nunca respin do notebook) |
+| D11 | ISO via Cubic sobre a ISO oficial Mint Xfce + repositório APT `codeos` | Reproduzível e sem dados pessoais (nunca respin do notebook) |
+| D12 | Logo oficial = `assets/logo/source/codeos-logo-source.png`, vetorizado em `assets/icons/src/apps/codeos.svg` (erro médio 1/255 contra o original); só as cores dele (azul `#1E54BC`, ciano `#05C0DF`, branco) em todos os ícones; `build.py` exporta SVG + PNG | Uma paleta só, trocável no `manifest.toml`; o PNG `codeos-logo-original.png` é o original sem fundo |
+| D13 | Boot: tema Plymouth *script* com 2 camadas (logo + brilho neon no próprio contorno, sem linha em volta), surgindo do preto e depois esmaecendo e brilhando em ciclos suaves de 3,6 s, sem piscar; a prévia (`assets/boot/build_boot.py`) usa as mesmas camadas e a mesma curva de brilho | O que foi aprovado na prévia é o que aparece no boot; instalar o tema só depois da aprovação |
 
 ## Limites físicos encontrados (não resolvíveis por software)
 
