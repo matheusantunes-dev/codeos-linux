@@ -9,6 +9,7 @@
 #   ./backup/backup.sh run           salva o estado dos pacotes e faz o snapshot do /home
 #   ./backup/backup.sh verify        checa a integridade e restaura uma amostra para comparar
 #   ./backup/backup.sh status        lista snapshots e estatísticas
+#   ./backup/backup.sh restore [UUID] no sistema novo: devolve o /home do último snapshot
 
 set -uo pipefail
 export LC_ALL=C.UTF-8
@@ -35,7 +36,7 @@ die()  { printf 'ERRO: %s\n' "$*" >&2; exit 1; }
 confirm() { local a; read -r -p "$1 [s/N] " a; [[ $a =~ ^[sS]$ ]]; }
 pval() { [[ $2 =~ (^|[[:space:]])$1=\"([^\"]*)\" ]] && printf '%s' "${BASH_REMATCH[2]}"; }
 
-usage() { sed -n '2,11p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
 
 load_conf() {
   [[ -r $CONF ]] || die "sem configuração: rode '$0 init' primeiro."
@@ -237,6 +238,54 @@ print(s[-1]["short_id"], s[-1]["time"]) if s else None')
   info "Backup verificado. Registro em $VERIFIED_STAMP (o Ansible exige um com menos de 24 h)."
 }
 
+# No sistema recém-instalado: a configuração e a senha ainda não existem (estão dentro do backup).
+cmd_restore() {
+  local uuid=${1:-} id path when
+  local -a cands=()
+  if [[ -z $uuid && -r $CONF ]]; then uuid=$(sed -n 's/^DEST_UUID=//p' "$CONF"); fi
+  if [[ -z $uuid ]]; then
+    mapfile -t cands < <(detect_dest)
+    if ((${#cands[@]} != 1)); then
+      echo "Partições candidatas (ext4/btrfs/xfs em disco USB):"
+      printf '  %s\n' "${cands[@]:-nenhuma}"
+      die "escolha uma explicitamente: $0 restore <UUID>"
+    fi
+    uuid=${cands[0]%% *}
+  fi
+  if ! has restic; then
+    info "Instalando restic (pede sudo)"
+    sudo apt-get install -y restic || die "falha ao instalar o restic."
+  fi
+  DEST_UUID=$uuid
+  dest_mount
+  export RESTIC_REPOSITORY="$DEST_MNT/$REPO_SUBDIR"
+  [[ -f $RESTIC_REPOSITORY/config ]] || die "não há backup do CodeOS em $DEST_MNT."
+  if [[ -s $PASS_FILE ]]; then
+    export RESTIC_PASSWORD_FILE="$PASS_FILE"
+  else
+    read -rs -p "Senha do backup (a que você guardou): " RESTIC_PASSWORD; echo
+    export RESTIC_PASSWORD
+  fi
+
+  # o snapshot mais recente: "id caminho data"
+  read -r id path when < <(restic snapshots --tag codeos --json | python3 -I -c '
+import json, sys
+s = max(json.load(sys.stdin), key=lambda x: x["time"])
+print(s["short_id"], s["paths"][0], s["time"][:16].replace("T", " "))') || die "não consegui ler os snapshots (senha certa?)."
+  [[ $path == "$HOME" ]] || die "o backup é de $path: entre com a conta ${path##*/} (mesmo nome de usuário) e rode de novo."
+  if [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
+    warn "a sessão gráfica regrava as próprias configurações ao sair, por cima das restauradas."
+    warn "melhor: saia da sessão, aperte Ctrl+Alt+F3, entre por lá e rode de novo."
+    confirm "Continuar mesmo assim?" || die "cancelado."
+  fi
+  confirm "Restaurar o snapshot $id ($when) em $HOME? Arquivos com o mesmo nome são substituídos." \
+    || die "cancelado."
+  restic restore "$id" --target / --include "$HOME" || die "falha ao restaurar."
+  info "Pasta pessoal restaurada (a senha do backup voltou para $PASS_FILE)."
+  info "Próximos passos: ./backup/sistema.sh --restaurar <disco>/codeos-backup/sistema/<arquivo>.tar.gz"
+  info "                 depois reinicie e rode o apply com a tag maquina."
+}
+
 cmd_status() {
   open_repo
   restic snapshots --tag codeos
@@ -279,6 +328,7 @@ main() {
     run)    cmd_run ;;
     verify) cmd_verify ;;
     status) cmd_status ;;
+    restore) cmd_restore "$@" ;;
     -h|--help|"") usage ;;
     *) usage >&2; exit 2 ;;
   esac
