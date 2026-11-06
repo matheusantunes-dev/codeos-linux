@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=CodeOS: padrões da sessão
+Name[pt_BR]=CodeOS: padrões da sessão
+Comment=Applies updated CodeOS desktop defaults without overwriting your changes
+Comment[pt_BR]=Aplica os padrões novos do CodeOS sem apagar o que você mudou
+Exec=/usr/lib/codeos/sessao
+NoDisplay=true
+X-XFCE-Autostart-Override=true

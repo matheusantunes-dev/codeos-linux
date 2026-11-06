@@ -1,0 +1,13 @@
+#!/bin/sh
+# Remover o pacote não desfaz a configuração aplicada (tema, sessão, ajustes): ela é do sistema
+# instalado. Só o estado do próprio pacote sai no purge.
+set -e
+
+if [ "$1" = purge ]; then
+    rm -rf /var/lib/codeos /var/log/codeos
+fi
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload >/dev/null 2>&1 || true
+fi
+
+exit 0

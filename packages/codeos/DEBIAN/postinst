@@ -1,0 +1,27 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+configure)
+    install -d -m 755 /var/lib/codeos /var/log/codeos
+    # marca a versão nova como pendente; o serviço tira a marca quando terminar
+    touch /var/lib/codeos/pendente
+
+    if [ -d /run/systemd/system ]; then
+        systemctl daemon-reload || true
+        systemctl enable codeos-aplicar.service >/dev/null 2>&1 || true
+        # --no-block: o serviço espera o apt soltar o dpkg antes de começar
+        systemctl start --no-block codeos-aplicar.service || true
+        echo "CodeOS: a configuração desta versão será aplicada em segundo plano (registro: /var/log/codeos/aplicar.log)."
+    else
+        # montagem da ISO (chroot, sem systemd): iso/construir.sh já aplicou esta mesma versão
+        rm -f /var/lib/codeos/pendente
+        dpkg-query -W -f='${Version}\n' codeos > /var/lib/codeos/aplicado 2>/dev/null || true
+        mkdir -p /etc/systemd/system/multi-user.target.wants
+        ln -sf /usr/lib/systemd/system/codeos-aplicar.service \
+            /etc/systemd/system/multi-user.target.wants/codeos-aplicar.service
+    fi
+    ;;
+esac
+
+exit 0

@@ -1,0 +1,18 @@
+[Unit]
+Description=CodeOS: aplica a configuração do sistema da versão instalada
+Documentation=https://github.com/matheusantunes-dev/codeos-linux
+# no boot só roda se a última aplicação ficou pendente (atualização sem rede, por exemplo)
+ConditionPathExists=/var/lib/codeos/pendente
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/codeos/aplicar
+# baixa o tema e chaves de repositório e pode instalar pacotes: tempo de sobra
+TimeoutStartSec=45min
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

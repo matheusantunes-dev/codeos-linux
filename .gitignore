@@ -6,3 +6,4 @@ assets/icons/build/
 assets/boot/build/
 __pycache__/
 *.pyc
+packages/build/
