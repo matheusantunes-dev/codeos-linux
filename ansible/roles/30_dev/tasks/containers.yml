@@ -1,0 +1,15 @@
+# Docker sob demanda, como o Docker Desktop do Windows e do Mac: em vez de subir no boot (uns 120 MB
+# parados), o docker.socket fica escutando e o primeiro comando docker liga o serviço (e o containerd).
+- name: Docker e containerd fora do boot
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: false
+  become: true
+  loop: [docker.service, containerd.service]
+
+- name: Docker ligado pelo primeiro uso
+  ansible.builtin.systemd_service:
+    name: docker.socket
+    enabled: true
+    state: started
+  become: true

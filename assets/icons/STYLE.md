@@ -14,6 +14,9 @@ O tema herda do Papirus (`Inherits=Papirus,hicolor`): só desenhamos o que é id
 - Traço: 3 px em 48 px (1,5 px em 16 px), sempre com `stroke-linecap="round"` e `stroke-linejoin="round"`.
 - Cantos: `rx=2` em retângulos internos e `rx=7` no quadrado de fundo dos apps.
 - Sem degradê, sombra ou texto. A profundidade vem de 2 tons da mesma cor (frente mais clara, fundo mais escuro).
+- Exceção: a lixeira (`places/user-trash*`) e os discos (`devices/drive-*`) não são desenhados aqui. São os do Mint-L
+  recoloridos (`recolor_icons.py`), em PNG por tamanho: lixeira no azul do logo, discos em metal escovado aço-ciano,
+  tons diferentes para não confundir.
 - Só as cores do logo: azul (`primary` e variações), ciano (`accent`, `accent-light`) e branco (`paper`).
 
 ## Paleta

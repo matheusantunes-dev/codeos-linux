@@ -1,0 +1,448 @@
+- name: Início da sessão CodeOS (liga o compositor antes da barra)
+  ansible.builtin.copy:
+    src: codeos-session
+    dest: /usr/local/bin/codeos-session
+    mode: "0755"
+  become: true
+
+- name: Sessão "CodeOS" na tela de login
+  ansible.builtin.copy:
+    src: codeos.desktop
+    dest: /usr/share/xsessions/codeos.desktop
+    mode: "0644"
+  become: true
+
+- name: Pastas de configuração padrão da sessão CodeOS
+  ansible.builtin.file:
+    path: "{{ desktop_xdg_dir }}/{{ item }}"
+    state: directory
+    mode: "0755"
+  become: true
+  loop:
+    - xfce4/xfconf/xfce-perchannel-xml
+    - autostart
+    - picom
+
+- name: Mesclador de configurações (padrões novos sem apagar as suas)
+  ansible.builtin.copy:
+    src: codeos-xfconf-merge
+    dest: /usr/local/bin/codeos-xfconf-merge
+    mode: "0755"
+  become: true
+
+# Na primeira vez guarda os padrões que estão instalados (os que a sua conta recebeu) como "últimos
+# aplicados", para a mesclagem abaixo saber o que você mudou.
+- name: Registrar os padrões atuais antes de trocá-los
+  ansible.builtin.shell: >-
+    /usr/local/bin/codeos-xfconf-merge --registrar
+    {{ desktop_xdg_dir }}/xfce4/xfconf/xfce-perchannel-xml/*.xml
+  changed_when: false
+
+- name: Configuração padrão do Xfce (painel, janelas, aparência, atalhos)
+  ansible.builtin.template:
+    src: "xfconf/{{ item }}.j2"
+    dest: "{{ desktop_xdg_dir }}/xfce4/xfconf/xfce-perchannel-xml/{{ item }}"
+    mode: "0644"
+  become: true
+  loop:
+    - xfce4-panel.xml
+    - xfwm4.xml
+    - xsettings.xml
+    - xfce4-keyboard-shortcuts.xml
+    - xfce4-desktop.xml
+    - xfce4-notifyd.xml
+    - thunar.xml
+    - xfce4-terminal.xml
+    - xfce4-clipman.xml
+  register: desktop_xfconf_defaults
+
+# Valem só na sessão CodeOS e o usuário pode desligar em Configurações > Sessão e inicialização,
+# ou sobrescrever com ~/.config/picom/picom.conf.
+# Sem isto o Xfce mostra "Debian Sensible Browser" como navegador padrão.
+- name: Apps padrão (navegador, e-mail, arquivos, terminal)
+  ansible.builtin.copy:
+    dest: "{{ desktop_xdg_dir }}/xfce4/helpers.rc"
+    content: |
+      WebBrowser=firefox
+      MailReader=thunderbird
+      FileManager=thunar
+      TerminalEmulator=xfce4-terminal
+    mode: "0644"
+  become: true
+
+# Os do Mint (/usr/share/applications/mimeapps.list: Nemo, xviewer, xed) estão escondidos no CodeOS e a
+# escolha caía em qualquer app (pastas no Nemo, imagens no Drawing).
+- name: Apps padrão por tipo de arquivo na sessão CodeOS
+  ansible.builtin.copy:
+    src: xfce-mimeapps.list
+    dest: "{{ desktop_xdg_dir }}/xfce-mimeapps.list"
+    mode: "0644"
+  become: true
+
+- name: Compositor picom (sombras, cantos arredondados, fade)
+  ansible.builtin.template:
+    src: picom.conf.j2
+    dest: "{{ desktop_xdg_dir }}/picom/picom.conf"
+    mode: "0644"
+  become: true
+
+- name: Iniciar com a sessão o histórico da área de transferência, o papel de parede em todas as telas e a luz noturna
+  ansible.builtin.copy:
+    src: "autostart/{{ item }}"
+    dest: "{{ desktop_xdg_dir }}/autostart/{{ item }}"
+    mode: "0644"
+  become: true
+  # mesmos nomes dos arquivos dos pacotes em /etc/xdg/autostart: na sessão CodeOS estes têm prioridade,
+  # então o picom do pacote não sobe (o codeos-session já o ligou) e o clipman (Hidden=true no pacote) sobe
+  loop:
+    - picom.desktop
+    - xfce4-clipman-plugin-autostart.desktop
+    - codeos-wallpaper-sync.desktop
+    - codeos-night-light.desktop
+    - codeos-xcape.desktop
+
+- name: Remover o autostart antigo do picom (era iniciado duas vezes)
+  ansible.builtin.file:
+    path: "{{ desktop_xdg_dir }}/autostart/codeos-picom.desktop"
+    state: absent
+  become: true
+
+- name: Esconder na sessão CodeOS os autostarts do Mint e do Cinnamon
+  ansible.builtin.copy:
+    dest: "{{ desktop_xdg_dir }}/autostart/{{ item }}"
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name={{ item | regex_replace('\\.desktop$', '') }}
+      Hidden=true
+    mode: "0644"
+  become: true
+  loop: "{{ desktop_hidden_autostarts }}"
+
+- name: Pasta de atalhos próprios da sessão CodeOS
+  ansible.builtin.file:
+    path: /usr/share/codeos/applications
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Esconder na sessão CodeOS os apps do Mint
+  ansible.builtin.copy:
+    dest: "/usr/share/codeos/applications/{{ item }}"
+    content: |
+      [Desktop Entry]
+      Type=Application
+      Name={{ item | regex_replace('\\.desktop$', '') }}
+      NoDisplay=true
+      Hidden=true
+    mode: "0644"
+  become: true
+  loop: "{{ desktop_hidden_apps }}"
+
+# A sua conta guarda uma cópia completa de cada canal no primeiro login, e ela passa por cima dos padrões.
+# Quando o layout do CodeOS muda de versão, a cópia antiga vai para backup e o Xfce lê os padrões novos.
+# Só com a sessão gráfica aberta (é a sua conta no xfconfd). O que você mudou fica; o que estava no padrão
+# antigo do CodeOS passa para o novo. Sem sessão (ex.: montagem da ISO) os padrões valem no primeiro login.
+- name: Levar os padrões novos para a sua conta
+  ansible.builtin.command:
+    argv: "{{ ['/usr/local/bin/codeos-xfconf-merge'] + (desktop_xfconf_defaults.results
+            | map(attribute='item') | map('regex_replace', '^', desktop_xdg_dir ~ '/xfce4/xfconf/xfce-perchannel-xml/')
+            | list) }}"
+  register: desktop_xfconf_merge
+  changed_when: desktop_xfconf_merge.stdout | length > 0
+  when: lookup('ansible.builtin.env', 'DBUS_SESSION_BUS_ADDRESS') | length > 0
+
+# O xfconfd guarda os padrões do sistema em memória: reiniciado (o TERM grava o que está pendente), ele
+# relê os arquivos; a barra, a área de trabalho, o xfsettingsd e o xfwm4 recarregam junto.
+- name: Recarregar a sessão com os padrões novos
+  ansible.builtin.shell: |
+    pkill -TERM -x xfconfd || true
+    sleep 1
+    xfconf-query -c xfce4-panel -l >/dev/null
+    setsid xfce4-panel -r >/dev/null 2>&1 &
+    setsid xfsettingsd --replace >/dev/null 2>&1 &
+    setsid xfwm4 --replace >/dev/null 2>&1 &
+    xfdesktop --reload || true
+  when:
+    - lookup('ansible.builtin.env', 'DBUS_SESSION_BUS_ADDRESS') | length > 0
+    - lookup('ansible.builtin.env', 'DISPLAY') | length > 0
+    - desktop_xfconf_defaults is changed or desktop_xfconf_merge is changed
+
+- name: Super+V (abre o histórico e sobe o Clipman se ele não estiver rodando)
+  ansible.builtin.copy:
+    src: codeos-clipboard
+    dest: /usr/local/bin/codeos-clipboard
+    mode: "0755"
+  become: true
+
+- name: Seletor de cor (Super+Shift+C) e copiar texto da tela (Super+Shift+T), como no PowerToys
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: "0755"
+  become: true
+  loop: [codeos-color-picker, codeos-text-extractor]
+
+- name: Alt+F4 como no Windows (fecha a janela; na área de trabalho, opções de desligar)
+  ansible.builtin.copy:
+    src: codeos-alt-f4
+    dest: /usr/local/bin/codeos-alt-f4
+    mode: "0755"
+  become: true
+
+# a área de trabalho espera a barra reservar o espaço dela antes de posicionar os ícones (senão eles
+# caíam numa grade de outro tamanho, embaralhados); /usr/local/bin vem antes de /usr/bin no PATH
+- name: Área de trabalho abre depois do espaço da barra (ícones sempre no lugar)
+  ansible.builtin.copy:
+    src: xfdesktop
+    dest: /usr/local/bin/xfdesktop
+    mode: "0755"
+  become: true
+
+- name: Papel de parede com "Aplicar em todas as telas" (o xfdesktop não tem essa opção)
+  ansible.builtin.copy:
+    src: codeos-wallpaper
+    dest: /usr/local/bin/codeos-wallpaper
+    mode: "0755"
+  become: true
+
+- name: Atalho "Papel de parede" nas Configurações da sessão CodeOS
+  ansible.builtin.copy:
+    src: codeos-wallpaper.desktop
+    dest: /usr/share/codeos/applications/codeos-wallpaper.desktop
+    mode: "0644"
+  become: true
+
+- name: Faixa "mostrar área de trabalho" (scripts)
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: "0755"
+  become: true
+  loop: [codeos-showdesktop, codeos-showdesktop-bar]
+
+- name: Faixa "mostrar área de trabalho" (imagem)
+  ansible.builtin.copy:
+    src: codeos-showdesktop-bar.png
+    dest: /usr/share/codeos/pixmaps/
+    mode: "0644"
+    directory_mode: "0755"
+  become: true
+
+- name: Pasta da configuração padrão dos plugins da barra
+  ansible.builtin.file:
+    path: "{{ desktop_xdg_dir }}/xfce4/panel"
+    state: directory
+    mode: "0755"
+  become: true
+
+# 9 = barra principal, 13 = segunda tela (ids do xfce4-panel.xml.j2)
+- name: Faixa "mostrar área de trabalho" (configuração do genmon)
+  ansible.builtin.copy:
+    src: genmon-showdesktop.rc
+    dest: "{{ desktop_xdg_dir }}/xfce4/panel/genmon-{{ item }}.rc"
+    mode: "0644"
+  become: true
+  loop: [9, 13]
+
+- name: Pastas do módulo do seletor de papel de parede
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  become: true
+  loop: [/usr/local/src/codeos, /usr/local/lib/codeos]
+
+- name: Fonte do módulo "Apply to all displays" do seletor de papel de parede
+  ansible.builtin.copy:
+    src: codeos-desktop-settings.c
+    dest: /usr/local/src/codeos/codeos-desktop-settings.c
+    mode: "0644"
+  become: true
+  register: desktop_settings_module_src
+
+- name: Descartar o módulo compilado de uma fonte antiga
+  ansible.builtin.file:
+    path: /usr/local/lib/codeos/libcodeos-desktop-settings.so
+    state: absent
+  become: true
+  when: desktop_settings_module_src is changed
+
+- name: Compilar o módulo do seletor de papel de parede
+  ansible.builtin.shell: >-
+    gcc -shared -fPIC -O2 -Wall -o /usr/local/lib/codeos/libcodeos-desktop-settings.so
+    /usr/local/src/codeos/codeos-desktop-settings.c $(pkg-config --cflags --libs gtk+-3.0)
+  args:
+    creates: /usr/local/lib/codeos/libcodeos-desktop-settings.so
+  become: true
+
+# /usr/local/bin vem antes de /usr/bin no PATH: o menu da área de trabalho e as Configurações abrem este
+- name: Abrir o seletor de papel de parede com o módulo do CodeOS
+  ansible.builtin.copy:
+    src: xfdesktop-settings
+    dest: /usr/local/bin/xfdesktop-settings
+    mode: "0755"
+  become: true
+
+- name: Fonte do módulo "Pin to taskbar" da barra de tarefas
+  ansible.builtin.copy:
+    src: codeos-taskbar-pins.c
+    dest: /usr/local/src/codeos/codeos-taskbar-pins.c
+    mode: "0644"
+  become: true
+  register: desktop_taskbar_pins_src
+
+- name: Descartar o módulo da barra compilado de uma fonte antiga
+  ansible.builtin.file:
+    path: /usr/local/lib/codeos/libcodeos-taskbar-pins.so
+    state: absent
+  become: true
+  when: desktop_taskbar_pins_src is changed
+
+- name: Compilar o módulo "Pin to taskbar"
+  ansible.builtin.shell: >-
+    gcc -shared -fPIC -O2 -Wall -Wno-deprecated-declarations -o /usr/local/lib/codeos/libcodeos-taskbar-pins.so
+    /usr/local/src/codeos/codeos-taskbar-pins.c $(pkg-config --cflags --libs libwnck-3.0 gio-unix-2.0 x11 xcomposite cairo-xlib)
+  args:
+    creates: /usr/local/lib/codeos/libcodeos-taskbar-pins.so
+  become: true
+
+# /usr/local/bin vem antes de /usr/bin no PATH: a sessão abre a barra por aqui, já com o módulo
+- name: Abrir a barra de tarefas com o módulo "Pin to taskbar"
+  ansible.builtin.copy:
+    src: xfce4-panel
+    dest: /usr/local/bin/xfce4-panel
+    mode: "0755"
+  become: true
+
+# Os plugins de fora da barra (bandeja, volume, notificações) rodam no wrapper-2.0 do xfce4-panel: ele é
+# desviado (dpkg-divert, sobrevive às atualizações do pacote) e no lugar fica um script que abre o
+# original com o módulo da barra, para os ícones da direita ficarem do tamanho do Windows.
+- name: Desviar o wrapper-2.0 dos plugins da barra
+  ansible.builtin.command: >-
+    dpkg-divert --local --rename --divert {{ desktop_panel_wrapper }}.real --add {{ desktop_panel_wrapper }}
+  args:
+    creates: "{{ desktop_panel_wrapper }}.real"
+  become: true
+
+# Plugins da barra no mesmo processo dela (como os de relógio e lista de janelas): cada plugin "de fora"
+# carregava uma cópia do GTK no próprio processo, uns 35 MB cada. A bandeja e o menu iniciar continuam
+# separados (ver desktop_panel_internal_plugins). As descrições dos pacotes são desviadas com dpkg-divert
+# e as do CodeOS são as mesmas com X-XFCE-Internal=true (refeitas a cada apply a partir das originais).
+- name: Desviar as descrições dos plugins que passam a rodar dentro da barra
+  ansible.builtin.command: >-
+    dpkg-divert --local --rename --divert /usr/share/xfce4/panel/plugins/{{ item }}.desktop.real
+    --add /usr/share/xfce4/panel/plugins/{{ item }}.desktop
+  args:
+    creates: "/usr/share/xfce4/panel/plugins/{{ item }}.desktop.real"
+  become: true
+  loop: "{{ desktop_panel_internal_plugins }}"
+
+- name: Plugins que voltam a rodar fora da barra (desfaz o desvio de uma versão anterior)
+  ansible.builtin.shell: |
+    f=/usr/share/xfce4/panel/plugins/{{ item }}.desktop
+    rm -f "$f"
+    dpkg-divert --local --rename --remove "$f"
+  args:
+    removes: "/usr/share/xfce4/panel/plugins/{{ item }}.desktop.real"
+  become: true
+  loop: "{{ desktop_panel_external_plugins }}"
+
+- name: Plugins da barra marcados como internos
+  ansible.builtin.shell: |
+    f=/usr/share/xfce4/panel/plugins/{{ item }}.desktop
+    sed 's/^X-XFCE-Internal=.*/X-XFCE-Internal=true/' "$f.real" > "$f.novo"
+    if cmp -s "$f.novo" "$f"; then rm -f "$f.novo"; else chmod 644 "$f.novo"; mv "$f.novo" "$f"; echo mudou; fi
+  become: true
+  loop: "{{ desktop_panel_internal_plugins }}"
+  register: desktop_internal_plugins
+  changed_when: "'mudou' in desktop_internal_plugins.stdout"
+
+# .exe e .msi abrem com dois cliques pelo Wine (como no Zorin OS); o pacote wine do Ubuntu não traz
+# atalho de programa para isso
+- name: Programas do Windows pelo Wine (abrir .exe e .msi)
+  ansible.builtin.copy:
+    src: "applications/{{ item }}"
+    dest: "/usr/share/codeos/applications/{{ item }}"
+    mode: "0644"
+  become: true
+  loop: [codeos-wine.desktop, codeos-wine-msi.desktop]
+
+- name: Abrir os plugins de fora da barra com o módulo da barra
+  ansible.builtin.copy:
+    src: xfce4-panel-wrapper-2.0
+    dest: "{{ desktop_panel_wrapper }}"
+    mode: "0755"
+  become: true
+
+# Os vigias que ficam rodando a sessão inteira (luz noturna e papel de parede em todas as telas) são em
+# C: em Python ocupavam ~36 MB parados; em C, ~5 MB. As janelas de configuração continuam em Python.
+- name: Fontes dos vigias da luz noturna e do papel de parede
+  ansible.builtin.copy:
+    src: "{{ item }}.c"
+    dest: "/usr/local/src/codeos/{{ item }}.c"
+    mode: "0644"
+  become: true
+  loop: [codeos-night-light-daemon, codeos-wallpaper-sync]
+  register: desktop_vigias_src
+
+- name: Descartar os vigias compilados de uma fonte antiga
+  ansible.builtin.file:
+    path: "/usr/local/bin/{{ item.item }}"
+    state: absent
+  become: true
+  loop: "{{ desktop_vigias_src.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item is changed
+
+- name: Compilar os vigias da luz noturna e do papel de parede
+  ansible.builtin.shell: >-
+    gcc -O2 -Wall -o /usr/local/bin/{{ item.nome }} /usr/local/src/codeos/{{ item.nome }}.c
+    $(pkg-config --cflags --libs {{ item.libs }}) {{ item.extra | default('') }}
+  args:
+    creates: "/usr/local/bin/{{ item.nome }}"
+  become: true
+  loop:
+    - { nome: codeos-night-light-daemon, libs: "json-glib-1.0 xrandr x11", extra: "-lm" }
+    - { nome: codeos-wallpaper-sync, libs: "libxfconf-0 xrandr x11" }
+
+- name: Luz noturna por monitor (programa)
+  ansible.builtin.copy:
+    src: codeos-night-light
+    dest: /usr/local/bin/codeos-night-light
+    mode: "0755"
+  become: true
+
+- name: Atalho "Luz noturna" nas Configurações da sessão CodeOS
+  ansible.builtin.copy:
+    src: codeos-night-light.desktop
+    dest: /usr/share/codeos/applications/codeos-night-light.desktop
+    mode: "0644"
+  become: true
+
+# cópias provisórias na conta (antes do primeiro apply com a luz noturna) passariam na frente das do sistema
+- name: Remover as cópias provisórias (luz noturna, xcape, Screenshot oculto, barra de tarefas) da sua conta
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ codeos_home }}/.local/bin/codeos-night-light"
+    - "{{ codeos_home }}/.local/share/applications/codeos-night-light.desktop"
+    - "{{ codeos_home }}/.config/autostart/codeos-night-light.desktop"
+    - "{{ codeos_home }}/.local/bin/xcape"
+    - "{{ codeos_home }}/.config/autostart/codeos-xcape.desktop"
+    - "{{ codeos_home }}/.local/share/applications/org.gnome.Screenshot.desktop"
+    - "{{ codeos_home }}/.config/xfce-mimeapps.list"
+    - "{{ codeos_home }}/.local/bin/xfce4-panel"
+    - "{{ codeos_home }}/.local/bin/codeos-taskbar-pin"
+    - "{{ codeos_home }}/.local/lib/codeos/libcodeos-taskbar-pins.so"
+    - "{{ codeos_home }}/.local/lib/codeos/libcodeos-bandeja-teste.so"
+
+# cópia de teste das correções do tema na conta (o tema instalado já as traz e ela passaria na frente)
+- name: Remover a cópia de teste do CSS do tema da sua conta
+  ansible.builtin.shell: |
+    f="{{ codeos_home }}/.config/gtk-3.0/gtk.css"
+    if grep -q 'Teste das correções do CodeOS' "$f" 2>/dev/null; then rm -f "$f"; echo removido; fi
+  register: desktop_gtk_css_teste
+  changed_when: "'removido' in desktop_gtk_css_teste.stdout"

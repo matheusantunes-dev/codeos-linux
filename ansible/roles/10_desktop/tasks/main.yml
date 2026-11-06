@@ -1,0 +1,29 @@
+- name: Pacotes
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Ícones do CodeOS
+  ansible.builtin.import_tasks: icons.yml
+
+- name: Tema Fluent
+  ansible.builtin.import_tasks: theme.yml
+
+- name: Fonte Selawik
+  ansible.builtin.import_tasks: fonts.yml
+
+- name: Papéis de parede
+  ansible.builtin.import_tasks: wallpapers.yml
+
+- name: Sessão CodeOS e configuração padrão do Xfce
+  ansible.builtin.import_tasks: session.yml
+
+- name: Tela de login e sessão padrão
+  ansible.builtin.import_tasks: login.yml
+
+- name: Tela de boas-vindas
+  ansible.builtin.import_tasks: welcome.yml
+
+- name: Identidade do sistema (CodeOS)
+  ansible.builtin.import_tasks: identity.yml
+
+- name: Remover o Cinnamon
+  ansible.builtin.import_tasks: cinnamon.yml

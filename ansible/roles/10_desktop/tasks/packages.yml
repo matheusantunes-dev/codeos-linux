@@ -1,0 +1,8 @@
+- name: Instalar o Xfce e complementos
+  ansible.builtin.apt:
+    name: "{{ desktop_packages }}"
+    state: present
+    install_recommends: false
+    update_cache: true
+    cache_valid_time: 3600
+  become: true

@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Papel de parede do CodeOS: a opção "Aplicar em todas as telas" que o xfdesktop não tem.
+
+  codeos-wallpaper          janela com a chave e o botão que abre o seletor do Xfce
+  codeos-wallpaper --sync   o mesmo que codeos-wallpaper-sync, o vigia em C (autostart da sessão):
+                            com a chave ligada, o papel de parede escolhido numa tela vai para todas
+                            as telas e áreas de trabalho; sincronizar() abaixo é a referência dele
+
+A chave fica no próprio xfconf (xfce4-desktop /codeos/all-displays), então o vigia reage na hora.
+"""
+import locale
+import re
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Xfconf", "0")
+from gi.repository import GLib, Xfconf  # noqa: E402
+
+CHANNEL = "xfce4-desktop"
+SWITCH = "/codeos/all-displays"
+# o que define a imagem de uma tela; a cor de fundo fica como estiver em cada uma
+KEY_RE = re.compile(r"^/backdrop/screen\d+/monitor[^/]+/workspace\d+/(last-image|image-style)$")
+
+
+def channel():
+    Xfconf.init()
+    return Xfconf.Channel.new(CHANNEL)
+
+
+def ler(ch, prop):
+    return ch.get_string(prop, "") if prop.endswith("last-image") else ch.get_int(prop, 0)
+
+
+def escrever(ch, prop, valor):
+    ch.set_string(prop, valor) if prop.endswith("last-image") else ch.set_int(prop, valor)
+
+
+def espelhar(ch, origem):
+    """Copia o valor de uma tela para a mesma chave de todas as telas e áreas de trabalho."""
+    campo, valor = origem.rsplit("/", 1)[1], ler(ch, origem)
+    for prop in ch.get_properties("/backdrop"):
+        m = KEY_RE.match(prop)
+        if m and m.group(1) == campo and prop != origem and ler(ch, prop) != valor:
+            escrever(ch, prop, valor)
+
+
+def sincronizar():
+    ch = channel()
+
+    def mudou(_ch, prop, _valor):
+        if KEY_RE.match(prop) and ch.get_bool(SWITCH, True):
+            # as cópias também disparam este sinal, mas já chegam iguais e não são copiadas de novo
+            espelhar(ch, prop)
+        elif prop == SWITCH and ch.get_bool(SWITCH, True):
+            # ao ligar a chave, todas as telas ficam com o papel de parede da tela principal
+            tela = principal()
+            for p in ch.get_properties("/backdrop"):
+                if KEY_RE.match(p) and "/workspace0/" in p and tela in p:
+                    espelhar(ch, p)
+
+    ch.connect("property-changed", mudou)
+    GLib.MainLoop().run()
+
+
+def principal():
+    out = subprocess.run(["xrandr", "--query"], capture_output=True, text=True).stdout
+    m = re.search(r"^(\S+) connected primary", out, re.M)
+    return f"monitor{m.group(1)}/" if m else "monitor"
+
+
+# textos da janela no idioma da sessão (português ou inglês)
+TEXTOS = {
+    "pt": ("Papel de parede", "Aplicar em todas as telas", "O papel de parede escolhido numa tela vai para todas.",
+           "Escolher papel de parede…", "Fechar"),
+    "en": ("Wallpaper", "Apply to all displays", "The wallpaper you choose on one display goes to all of them.",
+           "Choose wallpaper…", "Close"),
+}
+
+
+def janela():
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gtk
+
+    idioma = (locale.getlocale(locale.LC_MESSAGES)[0] or "") if locale.setlocale(locale.LC_ALL, "") else ""
+    nome, rotulo, explicacao, escolher_txt, fechar_txt = TEXTOS["pt" if idioma.startswith("pt") else "en"]
+    ch = channel()
+    win = Gtk.Window(title=nome, icon_name="preferences-desktop-wallpaper")
+    win.set_default_size(420, -1)
+    win.set_position(Gtk.WindowPosition.CENTER)
+    win.connect("destroy", Gtk.main_quit)
+
+    caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16, margin=20)
+    win.add(caixa)
+
+    linha = Gtk.Box(spacing=12)
+    textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    titulo = Gtk.Label(xalign=0)
+    titulo.set_markup(f"<b>{rotulo}</b>")
+    detalhe = Gtk.Label(label=explicacao, xalign=0)
+    detalhe.get_style_context().add_class("dim-label")
+    textos.pack_start(titulo, False, False, 0)
+    textos.pack_start(detalhe, False, False, 0)
+    chave = Gtk.Switch(active=ch.get_bool(SWITCH, True), valign=Gtk.Align.CENTER)
+    chave.connect("notify::active", lambda s, _p: ch.set_bool(SWITCH, s.get_active()))
+    linha.pack_start(textos, True, True, 0)
+    linha.pack_end(chave, False, False, 0)
+    caixa.pack_start(linha, False, False, 0)
+
+    botoes = Gtk.Box(spacing=8, halign=Gtk.Align.END)
+    escolher = Gtk.Button(label=escolher_txt)
+    escolher.get_style_context().add_class("suggested-action")
+    escolher.connect("clicked", lambda _b: subprocess.Popen(["xfdesktop-settings"]))
+    fechar = Gtk.Button(label=fechar_txt)
+    fechar.connect("clicked", lambda _b: win.destroy())
+    botoes.pack_start(fechar, False, False, 0)
+    botoes.pack_start(escolher, False, False, 0)
+    caixa.pack_start(botoes, False, False, 0)
+
+    win.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    if "--sync" in sys.argv:
+        import os
+        os.execv("/usr/local/bin/codeos-wallpaper-sync", ["codeos-wallpaper-sync"])
+    janela()

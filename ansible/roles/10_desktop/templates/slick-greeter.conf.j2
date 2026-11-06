@@ -1,0 +1,18 @@
+# {{ ansible_managed }}
+# Tela de login do CodeOS (slick-greeter). Vale para todas as sessões.
+[Greeter]
+background={{ desktop_wallpaper_dir }}/{{ desktop_wallpaper_default }}
+background-color=#0A1B3C
+draw-user-backgrounds=false
+draw-grid=false
+stretch-background-across-monitors=false
+logo={{ desktop_greeter_logo }}
+theme-name={{ desktop_gtk_theme_dark }}
+icon-theme-name={{ desktop_icon_theme }}
+font-name=Selawik 11
+clock-format=%H:%M  ·  %a, %d/%m
+show-clock=true
+show-hostname=false
+xft-antialias=true
+xft-hintstyle=hintslight
+xft-rgba=rgb

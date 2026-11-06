@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome to CodeOS
+Name[pt_BR]=Bem-vindo ao CodeOS
+Comment=Shortcuts, appearance and optional extras
+Comment[pt_BR]=Atalhos, aparência e extras opcionais
+Exec=codeos-welcome
+Icon=codeos
+Terminal=false
+Categories=System;

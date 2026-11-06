@@ -1,0 +1,39 @@
+# Com a sessão CodeOS instalada e padrão (tarefas anteriores), o Cinnamon sai.
+- name: Conferir que a sessão CodeOS está instalada antes de remover o Cinnamon
+  ansible.builtin.stat:
+    path: /usr/share/xsessions/codeos.desktop
+  register: desktop_codeos_session
+
+- name: Remover o Cinnamon, o Muffin e o Nemo
+  ansible.builtin.apt:
+    name: "{{ desktop_cinnamon_packages }}"
+    state: absent
+    autoremove: false
+  become: true
+  when: desktop_codeos_session.stat.exists
+
+# Temas (Mint-X, Mint-Y, Mint-L), ícones, sons e papéis de parede do Mint: apareciam nas Configurações
+# de aparência. O mint-meta-core é só um pacote de dependências; o mintsystem, de que o Firefox do Mint
+# precisa, fica.
+- name: Remover os temas, ícones, sons e papéis de parede do Mint
+  ansible.builtin.apt:
+    name: "{{ desktop_mint_artwork_packages }}"
+    state: absent
+    autoremove: false
+  become: true
+  when: desktop_codeos_session.stat.exists
+
+- name: Tirar o ibus (só serve para idiomas como chinês e japonês; acentos funcionam sem ele)
+  ansible.builtin.apt:
+    name: "{{ desktop_ibus_packages }}"
+    state: absent
+    autoremove: false
+  become: true
+
+# Gestos de touchpad do Cinnamon (o serviço rodava no boot); no CodeOS nada usa
+- name: Tirar o touchegg
+  ansible.builtin.apt:
+    name: touchegg
+    state: absent
+    autoremove: false
+  become: true

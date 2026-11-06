@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Luz noturna
+Comment=Aplica a luz noturna em cada monitor (configuração em "Night light")
+Exec=codeos-night-light-daemon
+OnlyShowIn=XFCE;
+NoDisplay=true

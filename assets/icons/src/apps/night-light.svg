@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- luz noturna: tela do CodeOS com lua crescente e brilho quente -->
+  <defs>
+    <radialGradient id="quente" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFB547" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#FF8A3D" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="lua"><rect width="48" height="48" fill="#fff"/><circle cx="29" cy="17" r="9" fill="#000"/></mask>
+  </defs>
+  <rect x="4" y="6" width="40" height="30" rx="4" fill="{{primary-dark}}"/>
+  <rect x="7" y="9" width="34" height="24" rx="2" fill="{{primary}}"/>
+  <circle cx="24" cy="21" r="13" fill="url(#quente)"/>
+  <circle cx="23" cy="21" r="9" fill="#FFD27A" mask="url(#lua)"/>
+  <rect x="18" y="38" width="12" height="3" rx="1.5" fill="{{primary-dark}}"/>
+</svg>

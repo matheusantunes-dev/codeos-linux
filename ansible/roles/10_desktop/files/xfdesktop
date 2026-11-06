@@ -1,0 +1,19 @@
+#!/bin/bash
+# CodeOS: a área de trabalho só abre depois de a barra reservar o espaço dela na tela, como no Windows
+# (lá a barra de tarefas e os ícones são o mesmo programa). O xfdesktop guarda a posição dos ícones por
+# tamanho da área livre; abrindo junto com a barra, às vezes media a tela antes do espaço da barra e os
+# ícones caíam numa grade diferente, embaralhados. Espera até 5 s; comandos para a área de trabalho que
+# já está aberta (--reload, --quit, menus...) passam direto.
+for a in "$@"; do
+    case "$a" in
+        --display|--display=*|--sm-client-id|--sm-client-id=*|--disable-wm-check) ;;
+        --*|-[a-zA-Z]) exec /usr/bin/xfdesktop "$@" ;;
+    esac
+done
+tela=$(xprop -root _NET_DESKTOP_GEOMETRY 2>/dev/null | grep -o '[0-9]*$')
+for _ in $(seq 50); do
+    livre=$(xprop -root _NET_WORKAREA 2>/dev/null | awk -F', ' '{print $4}')
+    [ -n "$tela" ] && [ -n "$livre" ] && [ "$livre" -lt "$tela" ] && break
+    sleep 0.1
+done
+exec /usr/bin/xfdesktop "$@"

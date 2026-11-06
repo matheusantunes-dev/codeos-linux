@@ -1,0 +1,5 @@
+- name: Atualizar o cache de fontes
+  ansible.builtin.command:
+    argv: [fc-cache, -f]
+  become: true
+  changed_when: true

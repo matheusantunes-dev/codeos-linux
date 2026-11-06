@@ -1,0 +1,16 @@
+# CodeOS — aplica os módulos no sistema atual.
+#   Prévia sem mudar nada:  ansible-playbook site.yml --tags desktop --check --diff
+#   Aplicar um módulo:       ansible-playbook site.yml --tags desktop
+#   Tudo:                    ./apply.sh site.yml --tags desktop,system,dev
+- name: CodeOS
+  hosts: localhost
+  gather_facts: true
+  roles:
+    - role: 00_gate
+      tags: [always]
+    - role: 10_desktop
+      tags: [desktop]
+    - role: 20_system
+      tags: [system]
+    - role: 30_dev
+      tags: [dev]

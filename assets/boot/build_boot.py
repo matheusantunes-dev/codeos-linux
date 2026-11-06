@@ -109,21 +109,38 @@ GLOW_MAX = {glow_max};
 FPS = 50;  # o Plymouth chama a função de refresh 50 vezes por segundo
 
 # As camadas foram desenhadas para uma tela de {ref_h} px de altura.
-scale = Window.GetHeight() / {ref_h};
-logo.image = Image("logo.png");
-logo.image = logo.image.Scale(logo.image.GetWidth() * scale, logo.image.GetHeight() * scale);
-glow.image = Image("glow.png");
-glow.image = glow.image.Scale(glow.image.GetWidth() * scale, glow.image.GetHeight() * scale);
-
-cx = Window.GetX() + Window.GetWidth() / 2;
-cy = Window.GetY() + Window.GetHeight() / 2;
-
-glow.sprite = Sprite(glow.image);
-glow.sprite.SetPosition(cx - glow.image.GetWidth() / 2, cy - glow.image.GetHeight() / 2, 1);
+logo.source = Image("logo.png");
+glow.source = Image("glow.png");
+glow.sprite = Sprite();
+logo.sprite = Sprite();
 glow.sprite.SetOpacity(0);
-logo.sprite = Sprite(logo.image);
-logo.sprite.SetPosition(cx - logo.image.GetWidth() / 2, cy - logo.image.GetHeight() / 2, 2);
 logo.sprite.SetOpacity(0);
+screen_w = 0;
+screen_h = 0;
+
+# No começo do boot a tela ainda está no modo genérico do firmware; quando o driver de vídeo
+# assume, a resolução muda. Por isso escala e centro são refeitos sempre que o tamanho muda,
+# e não só uma vez (com cálculo único o logo ficava fora do centro ao ligar).
+fun layout()
+  {{
+    w = Window.GetWidth();
+    h = Window.GetHeight();
+    if (w == global.screen_w && h == global.screen_h)
+      return;
+    global.screen_w = w;
+    global.screen_h = h;
+    scale = h / {ref_h};
+    global.logo.image = logo.source.Scale(logo.source.GetWidth() * scale, logo.source.GetHeight() * scale);
+    global.glow.image = glow.source.Scale(glow.source.GetWidth() * scale, glow.source.GetHeight() * scale);
+    global.cx = Window.GetX() + w / 2;
+    global.cy = Window.GetY() + h / 2;
+    glow.sprite.SetImage(glow.image);
+    glow.sprite.SetPosition(cx - glow.image.GetWidth() / 2, cy - glow.image.GetHeight() / 2, 1);
+    logo.sprite.SetImage(logo.image);
+    logo.sprite.SetPosition(cx - logo.image.GetWidth() / 2, cy - logo.image.GetHeight() / 2, 2);
+  }}
+
+layout();
 
 frame = 0;
 status = "normal";
@@ -146,6 +163,7 @@ fun glow_level(t)
 
 fun refresh_callback()
   {{
+    layout();
     global.frame += 1;
     t = global.frame / FPS;
     logo.sprite.SetOpacity(smooth(t / FADE_IN));

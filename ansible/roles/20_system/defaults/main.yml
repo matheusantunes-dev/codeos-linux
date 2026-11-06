@@ -1,0 +1,30 @@
+# Módulo 2: boot, USB, Bluetooth, memória e limites para desenvolvimento.
+
+# Driver de vídeo carregado no initramfs (KMS cedo): a animação de boot já nasce na resolução nativa
+# de cada monitor, em vez de começar na imagem genérica do firmware e trocar no meio do boot.
+system_early_kms_modules: [i915]
+
+# Dispositivos USB que não podem entrar em economia de energia (vendor:product).
+system_usb_no_autosuspend:
+  - "2357:0604"   # TP-Link UB500 (Bluetooth)
+
+# Placa de rede para o Wake-on-LAN (o wol-fix.service apontava para enp3s0, que não existe).
+system_wol_interface: enp2s0
+
+# zram: swap comprimida na RAM, usada antes do /swapfile do disco.
+system_zram_size: "ram / 2"
+
+system_inotify_watches: 524288
+system_inotify_instances: 1024
+
+# Segurança (tasks/security.yml)
+system_ssh_server: false
+# faixas de rede local (privadas) para os serviços abaixo
+system_lan_ranges: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+system_lan_services:
+  - { port: "3702", proto: udp, para: "descoberta de computadores Windows (wsdd)" }
+  - { port: "5357", proto: tcp, para: "descoberta de computadores Windows (wsdd)" }
+  - { port: "1714:1764", proto: tcp, para: "KDE Connect" }  # o ufw exige tcp ou udp em faixa de portas
+  - { port: "1714:1764", proto: udp, para: "KDE Connect" }
+# arquivos de /etc/sudoers.d a tirar (regras sem senha inseguras de uma máquina; ver host_vars)
+system_sudoers_remove: []

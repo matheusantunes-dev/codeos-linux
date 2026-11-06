@@ -1,0 +1,59 @@
+# Identidade do sistema: nome, versão e autor do CodeOS onde o sistema se apresenta (os-release, que o
+# "About", o neofetch e os instaladores leem; lsb-release; a tela de login em modo texto; o "Sobre" do
+# Firefox; a janela "About"). Os arquivos dos pacotes são desviados com dpkg-divert (as atualizações
+# gravam no .real e os do CodeOS continuam valendo).
+- name: Ver se o Firefox instalado traz o arquivo de distribuição (o do Mint traz)
+  ansible.builtin.stat:
+    path: /usr/lib/firefox/distribution/distribution.ini
+  register: desktop_firefox_distribution
+
+- name: Desviar os arquivos de identidade dos pacotes
+  ansible.builtin.command: dpkg-divert --local --rename --divert {{ item }}.real --add {{ item }}
+  args:
+    creates: "{{ item }}.real"
+  become: true
+  loop: "{{ desktop_identity_files | map(attribute='dest') | list }}"
+  when: item is not search('firefox') or desktop_firefox_distribution.stat.exists
+
+- name: Arquivos de identidade do CodeOS
+  ansible.builtin.template:
+    src: "identity/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode | default('0644') }}"
+  become: true
+  loop: "{{ desktop_identity_files }}"
+  when: item.dest is not search('firefox') or desktop_firefox_distribution.stat.exists
+
+- name: Janela "About CodeOS" no lugar da do Xfce (mesmo nome no menu e nas Configurações)
+  ansible.builtin.template:
+    src: identity/xfce4-about.desktop.j2
+    dest: /usr/share/codeos/applications/xfce4-about.desktop
+    mode: "0644"
+  become: true
+
+# O GRUB usa o nome do sistema como pasta do carregador na partição EFI, e o GRUB assinado do Ubuntu
+# só procura em EFI/ubuntu: com o os-release dizendo CodeOS, isto mantém o boot onde ele está (o menu
+# fica escondido, então o nome não aparece).
+- name: Manter o carregador de boot em EFI/ubuntu
+  ansible.builtin.copy:
+    dest: /etc/default/grub.d/99-codeos.cfg
+    content: |
+      # Gerenciado pelo CodeOS (ansible/roles/10_desktop/tasks/identity.yml): o GRUB assinado do Ubuntu
+      # só inicia de EFI/ubuntu, e o nome vindo do os-release (CodeOS) mudaria essa pasta.
+      GRUB_DISTRIBUTOR="Ubuntu"
+    mode: "0644"
+  become: true
+
+# Programas GNOME e os de flatpak (pelo portal) leem o tema do gsettings, não do Xfce: o que o Mint e o
+# Cinnamon deixaram ali (Mint-Y, Mint-L) passa a ser o do CodeOS; outro valor (escolha sua) fica.
+- name: Tema e ícones do CodeOS também no gsettings
+  ansible.builtin.shell: |
+    mudou=
+    for par in "gtk-theme {{ desktop_gtk_theme }}" "icon-theme {{ desktop_icon_theme }}"; do
+      set -- $par
+      atual=$(gsettings get org.gnome.desktop.interface "$1") || continue
+      case "$atual" in *Mint*) gsettings set org.gnome.desktop.interface "$1" "$2"; mudou=1 ;; esac
+    done
+    [ -z "$mudou" ] || echo mudou
+  register: desktop_gsettings_tema
+  changed_when: "'mudou' in desktop_gsettings_tema.stdout"

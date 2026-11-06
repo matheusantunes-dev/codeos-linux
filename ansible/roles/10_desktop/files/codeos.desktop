@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=CodeOS
+Comment=Desktop do CodeOS (Xfce estilo Windows)
+Exec=/usr/local/bin/codeos-session
+TryExec=/usr/local/bin/codeos-session
+Icon=codeos
+Type=Application
+DesktopNames=XFCE

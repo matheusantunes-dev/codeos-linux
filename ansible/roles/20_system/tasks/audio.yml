@@ -1,0 +1,107 @@
+- name: Pasta de ajustes do PipeWire (serviço de usuário)
+  ansible.builtin.file:
+    path: /etc/systemd/user/pipewire.service.d
+    state: directory
+    mode: "0755"
+  become: true
+
+# No boot o PipeWire pode cair porque um nó de terceiros (ex.: microfone do Iriun Webcam) ainda não
+# tem o dispositivo; o systemd desiste após 5 tentativas em 1 s e a sessão fica sem som.
+- name: PipeWire tenta de novo até o áudio subir
+  ansible.builtin.copy:
+    dest: /etc/systemd/user/pipewire.service.d/10-codeos-retry.conf
+    content: |
+      # Gerenciado pelo CodeOS (ansible/roles/20_system).
+      [Unit]
+      StartLimitIntervalSec=0
+
+      [Service]
+      RestartSec=2
+    mode: "0644"
+  become: true
+
+- name: Fones Bluetooth reconectados e juntos (serviço de usuário)
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: codeos-bt-audio, dest: /usr/local/bin/codeos-bt-audio, mode: "0755" }
+    - { src: codeos-bt-audio.service, dest: /etc/systemd/user/codeos-bt-audio.service, mode: "0644" }
+  become: true
+
+- name: Ligar o serviço de fones em todas as contas
+  ansible.builtin.command: systemctl --global enable codeos-bt-audio.service
+  args:
+    creates: /etc/systemd/user/default.target.wants/codeos-bt-audio.service
+  become: true
+
+# O fones-vigia provisório chamava os fones desligados a cada 5 s e derrubava o adaptador.
+- name: Desligar o fones-vigia provisório da sua conta
+  ansible.builtin.file:
+    path: "{{ codeos_home }}/.config/systemd/user/default.target.wants/fones-vigia.service"
+    state: absent
+
+- name: Remover a cópia provisória do serviço de fones da sua conta
+  ansible.builtin.file:
+    path: "{{ codeos_home }}/{{ item }}"
+    state: absent
+  loop:
+    - .config/systemd/user/default.target.wants/codeos-bt-audio.service
+    - .config/systemd/user/codeos-bt-audio.service
+    - .local/bin/codeos-bt-audio
+
+# O fluidsynth (sintetizador de MIDI) subia em toda sessão carregando um banco de sons (~160 MB parado).
+# Como no Windows, onde o sintetizador MIDI só é carregado quando um programa toca MIDI: fora do boot;
+# quem precisar liga com "systemctl --user start fluidsynth". O pacote continua (o Lutris depende dele).
+- name: Sintetizador MIDI (fluidsynth) fora da sessão
+  ansible.builtin.command: systemctl --global disable fluidsynth.service
+  args:
+    removes: /etc/systemd/user/default.target.wants/fluidsynth.service
+  become: true
+
+# O Iriun Webcam instala um microfone virtual no PipeWire; quando ele não pode ser criado (no boot), o
+# PipeWire inteiro caía (5 vezes num boot). O PipeWire 1.0 só lê esse arquivo da pasta do pacote (uma
+# cópia em /etc ou na conta é ignorada), então o arquivo do pacote é desviado (dpkg-divert) e no lugar
+# fica o mesmo com "flags = [ nofail ]", a opção do PipeWire para um objeto que falha não derrubar tudo.
+# Refeito a cada apply a partir do original; nada acontece onde o Iriun não está instalado.
+- name: Ver se o Iriun Webcam está instalado
+  ansible.builtin.stat:
+    path: /usr/share/pipewire/pipewire.conf.d/iriunaudio.conf
+  register: system_iriun_conf
+
+- name: Desviar o arquivo do Iriun no PipeWire
+  ansible.builtin.command: >-
+    dpkg-divert --local --rename --divert /usr/share/pipewire/pipewire.conf.d/iriunaudio.conf.real
+    --add /usr/share/pipewire/pipewire.conf.d/iriunaudio.conf
+  args:
+    creates: /usr/share/pipewire/pipewire.conf.d/iriunaudio.conf.real
+  become: true
+  when: system_iriun_conf.stat.exists
+
+- name: Iriun Webcam sem derrubar o som
+  ansible.builtin.shell: |
+    orig=/usr/share/pipewire/pipewire.conf.d/iriunaudio.conf.real
+    dest=/usr/share/pipewire/pipewire.conf.d/iriunaudio.conf
+    { echo '# Gerenciado pelo CodeOS (ansible/roles/20_system/tasks/audio.yml): o arquivo do Iriun (desviado'
+      echo '# para iriunaudio.conf.real) com "flags = [ nofail ]", para o PipeWire não cair quando o microfone'
+      echo '# virtual falha.'
+      sed '0,/{ factory = adapter/s//{ factory = adapter\n        flags = [ nofail ]/' "$orig"; } > "$dest.novo"
+    if cmp -s "$dest.novo" "$dest"; then rm -f "$dest.novo"; else chmod 644 "$dest.novo"; mv "$dest.novo" "$dest"; echo mudou; fi
+  args:
+    removes: /usr/share/pipewire/pipewire.conf.d/iriunaudio.conf.real
+  become: true
+  register: system_iriun
+  changed_when: "'mudou' in system_iriun.stdout"
+
+# a versão anterior desta correção ficava em /etc, onde o PipeWire 1.0 não lê
+- name: Tirar a cópia do Iriun em /etc
+  ansible.builtin.file:
+    path: /etc/pipewire/pipewire.conf.d/iriunaudio.conf
+    state: absent
+  become: true
+
+- name: Tirar a cópia de teste do Iriun da sua conta
+  ansible.builtin.file:
+    path: "{{ codeos_home }}/.config/pipewire/pipewire.conf.d/iriunaudio.conf"
+    state: absent

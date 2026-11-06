@@ -1,0 +1,263 @@
+#!/usr/bin/env python3
+"""About CodeOS: a janela "Sobre" do sistema.
+
+Fica no lugar do xfce4-about (desviado com dpkg-divert para xfce4-about.real), então o "About" do menu e
+das Configurações abre esta. O nome e a versão vêm do /etc/os-release, que o CodeOS instala.
+"""
+import locale
+import os
+import platform
+import re
+import socket
+import subprocess
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
+
+CRIADOR = "{{ codeos_author }}"
+SITE = "{{ codeos_url }}"
+
+PT = (locale.getlocale(locale.LC_MESSAGES)[0] or os.environ.get("LANG", "")).startswith("pt")
+TEXTOS = {
+    "title": ("About {{ codeos_name }}", "Sobre o {{ codeos_name }}"),
+    "system": ("System", "Sistema"),
+    "about": ("About", "Sobre"),
+    "credits": ("Credits", "Créditos"),
+    "licenses": ("Licenses", "Licenças"),
+    "device": ("Device", "Dispositivo"),
+    "os": ("OS Name", "Sistema"),
+    "creator": ("Created by", "Criado por"),
+    "type": ("OS Type", "Tipo"),
+    "desktop": ("Desktop", "Área de trabalho"),
+    "kernel": ("Kernel Version", "Kernel"),
+    "cpu": ("CPU", "Processador"),
+    "memory": ("Memory", "Memória"),
+    "gpu": ("GPU", "Vídeo"),
+    "close": ("_Close", "_Fechar"),
+    "bits": ("64-bit", "64 bits"),
+    "description": (
+        "A desktop operating system for developers: familiar like Windows, light and fast, "
+        "with everything a programmer needs ready from the first boot.",
+        "Um sistema operacional para desenvolvedores: familiar como o Windows, leve e rápido, "
+        "com tudo o que um programador precisa pronto desde a primeira inicialização.",
+    ),
+    "credits_text": (
+        "CodeOS is built on free software. Thanks to the people behind:",
+        "O CodeOS é feito sobre software livre. Obrigado a quem faz:",
+    ),
+    "licenses_text": (
+        "The CodeOS identity, settings and tools: © 2026 {criador}.\n\n"
+        "Every program in the system keeps its own license (GPL, LGPL, BSD, MIT, OFL and others). "
+        "The full text of each one is in /usr/share/doc/<package>/copyright, and the common licenses "
+        "are in /usr/share/common-licenses.",
+        "Identidade, configurações e ferramentas do CodeOS: © 2026 {criador}.\n\n"
+        "Cada programa do sistema mantém a própria licença (GPL, LGPL, BSD, MIT, OFL e outras). "
+        "O texto completo de cada uma está em /usr/share/doc/<pacote>/copyright, e as licenças "
+        "comuns em /usr/share/common-licenses.",
+    ),
+}
+CREDITOS = [
+    ("Ubuntu 24.04 LTS", "base system, packages and updates", "sistema base, pacotes e atualizações"),
+    ("Linux", "kernel", "kernel"),
+    ("Xfce 4.18", "desktop, panel and settings", "área de trabalho, barra e configurações"),
+    ("Fluent GTK Theme", "window theme, by vinceliuice", "tema das janelas, de vinceliuice"),
+    ("Selawik", "interface font, by Microsoft (OFL)", "fonte da interface, da Microsoft (OFL)"),
+    ("JetBrains Mono", "terminal font (OFL)", "fonte do terminal (OFL)"),
+    ("picom", "window effects", "efeitos das janelas"),
+    ("Wallpapers", "photographers listed in /usr/share/backgrounds/codeos/CREDITS.md",
+     "fotógrafos listados em /usr/share/backgrounds/codeos/CREDITS.md"),
+]
+
+
+def t(chave):
+    return TEXTOS[chave][1 if PT else 0]
+
+
+def os_release():
+    dados = {}
+    try:
+        with open("/etc/os-release") as f:
+            for linha in f:
+                if "=" in linha:
+                    k, v = linha.rstrip("\n").split("=", 1)
+                    dados[k] = v.strip('"')
+    except OSError:
+        pass
+    return dados
+
+
+def cpu():
+    nomes = []
+    try:
+        with open("/proc/cpuinfo") as f:
+            nomes = [l.split(":", 1)[1].strip() for l in f if l.startswith("model name")]
+    except OSError:
+        pass
+    if not nomes:
+        return platform.processor() or "?"
+    nome = re.sub(r"\((R|TM)\)", lambda m: "®" if m.group(1) == "R" else "™", nomes[0])
+    return f"{nome} × {len(nomes)}"
+
+
+def memoria():
+    try:
+        with open("/proc/meminfo") as f:
+            for l in f:
+                if l.startswith("MemTotal:"):
+                    return f"{int(l.split()[1]) / 1024 / 1024:.1f} GiB"
+    except OSError:
+        pass
+    return "?"
+
+
+def video():
+    try:
+        saida = subprocess.run(["glxinfo", "-B"], capture_output=True, text=True, timeout=5).stdout
+        m = re.search(r"OpenGL renderer string: (.+)", saida)
+        if m:
+            nome = re.sub(r"\s*\([^()]*\)\s*$", "", m.group(1)).replace("(R)", "®")
+            mem = re.search(r"Video memory: (\d+)MB", saida)
+            return f"{nome} ({int(mem.group(1)) / 1024:.1f} GiB)" if mem else nome
+    except (OSError, subprocess.SubprocessError):
+        pass
+    try:
+        saida = subprocess.run(["lspci"], capture_output=True, text=True, timeout=5).stdout
+        m = re.search(r"(?:VGA|3D|Display)[^:]*: (.+)", saida)
+        if m:
+            return m.group(1)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return "?"
+
+
+def area_de_trabalho():
+    try:
+        saida = subprocess.run(["xfce4-session", "--version"], capture_output=True, text=True,
+                               timeout=5).stdout
+        m = re.search(r"\(Xfce ([\d.]+)\)", saida)
+        if m:
+            return f"Xfce {m.group(1)}"
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return "Xfce"
+
+
+def rotulo(texto, apagado=False, **kw):
+    l = Gtk.Label(label=texto, **kw)
+    if apagado:
+        l.set_sensitive(False)
+    return l
+
+
+def aba_sistema(info):
+    caixa = Gtk.Box(spacing=36, margin=18, valign=Gtk.Align.START)
+    logo = Gtk.Image.new_from_icon_name("codeos", Gtk.IconSize.DIALOG)
+    logo.set_pixel_size(128)
+    logo.set_valign(Gtk.Align.START)
+    caixa.pack_start(logo, False, False, 0)
+
+    grade = Gtk.Grid(row_spacing=6, column_spacing=12, valign=Gtk.Align.CENTER)
+    linhas = [
+        (t("device"), socket.gethostname()),
+        (t("os"), info.get("PRETTY_NAME", "CodeOS")),
+        (t("creator"), CRIADOR),
+        (t("type"), t("bits") if platform.architecture()[0] == "64bit" else platform.architecture()[0]),
+        None,
+        (t("desktop"), area_de_trabalho()),
+        ("GTK", f"{Gtk.get_major_version()}.{Gtk.get_minor_version()}.{Gtk.get_micro_version()}"),
+        (t("kernel"), os.uname().release),
+        None,
+        (t("cpu"), cpu()),
+        (t("memory"), memoria()),
+        (t("gpu"), video()),
+    ]
+    linha = 0
+    espaco = 0
+    for item in linhas:
+        if item is None:
+            espaco = 12
+            continue
+        nome, valor = item
+        a = rotulo(nome, apagado=True, xalign=1, margin_top=espaco)
+        b = rotulo(valor, xalign=0, margin_top=espaco, selectable=True)
+        grade.attach(a, 0, linha, 1, 1)
+        grade.attach(b, 1, linha, 1, 1)
+        linha += 1
+        espaco = 0
+    caixa.pack_start(grade, True, True, 0)
+    return caixa
+
+
+def aba_sobre(info):
+    caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=24,
+                    valign=Gtk.Align.CENTER)
+    logo = Gtk.Image.new_from_icon_name("codeos", Gtk.IconSize.DIALOG)
+    logo.set_pixel_size(128)
+    caixa.pack_start(logo, False, False, 0)
+    nome = rotulo("", justify=Gtk.Justification.CENTER)
+    nome.set_markup(f"<span size='xx-large' weight='bold'>{GLib.markup_escape_text(info.get('PRETTY_NAME', 'CodeOS'))}</span>")
+    caixa.pack_start(nome, False, False, 0)
+    desc = rotulo(t("description"), wrap=True, justify=Gtk.Justification.CENTER, max_width_chars=50)
+    caixa.pack_start(desc, False, False, 0)
+    autor = rotulo("", justify=Gtk.Justification.CENTER)
+    autor.set_markup(f"{GLib.markup_escape_text(t('creator'))} <b>{CRIADOR}</b>")
+    caixa.pack_start(autor, False, False, 6)
+    caixa.pack_start(Gtk.LinkButton(uri=SITE, label=SITE.replace("https://", "")), False, False, 0)
+    return caixa
+
+
+def aba_texto(texto):
+    rolagem = Gtk.ScrolledWindow(shadow_type=Gtk.ShadowType.ETCHED_IN, margin=6)
+    vista = Gtk.TextView(editable=False, cursor_visible=False, wrap_mode=Gtk.WrapMode.WORD,
+                         left_margin=12, right_margin=12, top_margin=12, bottom_margin=12)
+    vista.get_buffer().set_text(texto)
+    rolagem.add(vista)
+    return rolagem
+
+
+def aba_creditos():
+    linhas = [t("credits_text"), ""]
+    for nome, en, pt in CREDITOS:
+        linhas.append(f"{nome}\n    {pt if PT else en}\n")
+    linhas.append("…" + (" e milhares de outros projetos de software livre." if PT else
+                         " and thousands of other free software projects."))
+    return aba_texto("\n".join(linhas))
+
+
+def aba_licencas():
+    caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+    caixa.pack_start(aba_texto(t("licenses_text").format(criador=CRIADOR)), True, True, 0)
+    botoes = Gtk.ButtonBox(layout_style=Gtk.ButtonBoxStyle.CENTER, spacing=6, margin=6)
+    for nome, arquivo in (("GPL", "GPL-3"), ("LGPL", "LGPL-3"), ("BSD", "BSD")):
+        b = Gtk.Button(label=nome)
+        caminho = f"/usr/share/common-licenses/{arquivo}"
+        b.set_sensitive(os.path.exists(caminho))
+        b.connect("clicked", lambda _b, c=caminho: Gio.AppInfo.launch_default_for_uri(
+            GLib.filename_to_uri(c), None))
+        botoes.add(b)
+    caixa.pack_start(botoes, False, False, 0)
+    return caixa
+
+
+def main():
+    info = os_release()
+    janela = Gtk.Dialog(title=t("title"))
+    janela.set_icon_name("codeos")
+    janela.set_default_size(560, 600)
+    janela.add_button(t("close"), Gtk.ResponseType.CLOSE)
+    janela.connect("response", lambda *a: janela.destroy())
+    janela.connect("destroy", Gtk.main_quit)
+
+    abas = Gtk.Notebook(margin=6)
+    for titulo, conteudo in ((t("system"), aba_sistema(info)), (t("about"), aba_sobre(info)),
+                             (t("credits"), aba_creditos()), (t("licenses"), aba_licencas())):
+        abas.append_page(conteudo, Gtk.Label(label=titulo))
+    janela.get_content_area().pack_start(abas, True, True, 0)
+    janela.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,7 @@
+# {{ ansible_managed }}
+# Sem economia de energia (autosuspend) nos hubs USB e nos adaptadores listados: os hubs desta máquina
+# derrubavam o adaptador Bluetooth ao voltar do modo de economia.
+ACTION=="add|change", SUBSYSTEM=="usb", ATTR{bDeviceClass}=="09", TEST=="power/control", ATTR{power/control}="on"
+{% for id in system_usb_no_autosuspend %}
+ACTION=="add|change", SUBSYSTEM=="usb", ATTR{idVendor}=="{{ id.split(':')[0] }}", ATTR{idProduct}=="{{ id.split(':')[1] }}", TEST=="power/control", ATTR{power/control}="on"
+{% endfor %}

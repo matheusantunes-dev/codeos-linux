@@ -1,0 +1,28 @@
+#!/bin/bash
+# Faz, como administrador via pkexec (ação org.codeos.welcome.install), o que a tela de boas-vindas
+# (codeos-welcome) oferece: instalar os extras e editores e ligar o Docker sem sudo da própria conta. Só
+# aceita os itens da lista abaixo, nada passado de fora.
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+apt_instalar() {
+    apt-get install -y --no-install-recommends "$@" || { apt-get update && apt-get install -y --no-install-recommends "$@"; }
+}
+
+case "${1:-}" in
+    ms-fonts)
+        # a tela de boas-vindas mostrou a licença da Microsoft e a pessoa aceitou
+        echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
+        apt_instalar ttf-mscorefonts-installer ;;
+    kdeconnect) apt_instalar kdeconnect ;;
+    solaar)     apt_instalar solaar ;;
+    bottles)    flatpak install -y --system --noninteractive flathub com.usebottles.bottles ;;
+    vscode)     apt_instalar code ;;  # repositório oficial da Microsoft (ansible/roles/30_dev)
+    zed)        flatpak install -y --system --noninteractive flathub dev.zed.Zed ;;
+    docker-on|docker-off)
+        # a conta de quem pediu (o pkexec informa), nunca uma passada de fora
+        conta=$(getent passwd "${PKEXEC_UID:?}" | cut -d: -f1)
+        [ -n "$conta" ] || exit 2
+        if [ "$1" = docker-on ]; then usermod -aG docker "$conta"; else gpasswd -d "$conta" docker; fi ;;
+    *) echo "item desconhecido: ${1:-}" >&2; exit 2 ;;
+esac

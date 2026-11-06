@@ -1,0 +1,14 @@
+- name: Boot (animação centralizada desde o primeiro quadro)
+  ansible.builtin.import_tasks: boot.yml
+
+- name: USB e Bluetooth
+  ansible.builtin.import_tasks: usb.yml
+
+- name: Áudio que sobe sozinho no boot
+  ansible.builtin.import_tasks: audio.yml
+
+- name: Memória e limites para desenvolvimento
+  ansible.builtin.import_tasks: tuning.yml
+
+- name: Segurança (firewall, SSH, atualizações automáticas)
+  ansible.builtin.import_tasks: security.yml

@@ -1,0 +1,66 @@
+#!/bin/bash
+# Vigia do Bluetooth do CodeOS. Um adaptador Bluetooth USB (driver btusb) às vezes trava ao carregar o
+# firmware ("download fw command failed", "Read reg16 failed (-110)") quando o hub USB oscila: o
+# dispositivo e até o hci0 continuam lá, mas o BlueZ fica sem controlador ("No default controller
+# available"). Se houver adaptador btusb e nenhum controlador por mais de 20 s, ele é desconectado e
+# reconectado pelo sysfs, o mesmo que tirar e pôr o adaptador.
+#
+# Se isso não resolve (porta do hub caindo por interferência, "disabled by hub (EMI?)"), a cada terceira
+# tentativa reconecta também o hub de onde o adaptador depende, se o adaptador for o único aparelho nele.
+# O intervalo entre tentativas dobra a cada falha (1 min, 2, 4 até 5 min) para não ficar mexendo no
+# USB sem parar; volta a 1 min quando o controlador aparece.
+set -u
+missing_since=0
+last_reset=0
+attempts=0
+interval=60
+
+btusb_devices() {
+    # caminhos sysfs (ex.: 2-1.3.4.4) dos dispositivos USB com uma interface no driver btusb
+    for intf in /sys/bus/usb/drivers/btusb/*:*; do
+        [ -e "$intf" ] && basename "$intf" | cut -d: -f1
+    done | sort -u
+}
+
+only_child() {
+    # o hub $1 só tem o adaptador $2 ligado (reconectá-lo não derruba teclado, mouse ou disco)
+    local filhos
+    filhos=$(ls /sys/bus/usb/devices/ | grep -xE "${1//./\\.}\\.[0-9]+")
+    [ "$filhos" = "$2" ]
+}
+
+reconnect() {
+    echo "$1" >/sys/bus/usb/drivers/usb/unbind 2>/dev/null
+    sleep 3
+    echo "$1" >/sys/bus/usb/drivers/usb/bind 2>/dev/null
+}
+
+while true; do
+    now=$(date +%s)
+    devices=$(btusb_devices)
+    if [ -z "$devices" ] || timeout 5 bluetoothctl list 2>/dev/null | grep -q '^Controller '; then
+        (( attempts > 0 )) && [ -n "$devices" ] && echo "controlador de volta depois de $attempts tentativa(s)"
+        missing_since=0
+        attempts=0
+        interval=60
+    else
+        (( missing_since == 0 )) && missing_since=$now
+        if (( now - missing_since >= 20 && now - last_reset >= interval )); then
+            attempts=$(( attempts + 1 ))
+            for dev in $devices; do
+                hub=${dev%.*}
+                if (( attempts % 3 == 0 )) && [ "$hub" != "$dev" ] && only_child "$hub" "$dev"; then
+                    echo "adaptador $dev sem controlador (tentativa $attempts): reconectando o hub $hub"
+                    reconnect "$hub"
+                else
+                    echo "adaptador $dev sem controlador há $(( now - missing_since )) s (tentativa $attempts): reconectando"
+                    reconnect "$dev"
+                fi
+            done
+            last_reset=$now
+            missing_since=0
+            interval=$(( interval * 2 > 300 ? 300 : interval * 2 ))
+        fi
+    fi
+    sleep 5
+done

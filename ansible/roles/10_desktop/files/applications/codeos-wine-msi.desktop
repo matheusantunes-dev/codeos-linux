@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Windows Installer (Wine)
+Name[pt_BR]=Instalador do Windows (Wine)
+Comment=Install Windows programs from .msi packages
+Comment[pt_BR]=Instala programas do Windows de pacotes .msi
+Exec=wine msiexec /i %f
+Icon=wine
+Terminal=false
+NoDisplay=true
+MimeType=application/x-msi;application/x-ole-storage;

@@ -2,7 +2,8 @@
 """Build do tema de ícones do CodeOS.
 
 Aplica a paleta do manifest.toml, monta as pastas (modelo + glifo), valida cada SVG,
-cria os links de nomes alternativos, o index.theme, uma folha de prévia em HTML
+copia os ícones em PNG de src/raster/ (um por tamanho), cria os links de nomes alternativos,
+o index.theme, uma folha de prévia em HTML
 e exporta o logo (SVG + PNG) para assets/logo/.
 
 Uso: python3 assets/icons/build.py      (saída em assets/icons/build/)
@@ -24,10 +25,12 @@ from gi.repository import Rsvg  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "build"
-CONTEXTS = {"apps": "Applications", "places": "Places", "status": "Status"}
+CONTEXTS = {"actions": "Actions", "apps": "Applications", "devices": "Devices", "places": "Places", "status": "Status"}
 NAME_RE = re.compile(r"^[a-z0-9][a-z0-9.\-]*$")
 TOKEN_RE = re.compile(r"\{\{([a-z-]+)\}\}")
 GLYPH_MARK = "<!-- GLYPH -->"
+RASTER = ROOT / "src/raster"
+RASTER_DIR_RE = re.compile(r"^(\d+)(@2x)?$")
 SYMBOLIC_ON_DARK = "#EEEEEC"
 LOGO_DIR = ROOT.parent / "logo"
 LOGO_SIZES = (64, 128, 256, 512, 1024)
@@ -88,14 +91,19 @@ def load(manifest):
             glyph = (ROOT / "src/folders/glyphs" / f"{entry['glyph']}.svg").read_text().strip()
         svg = apply_palette(template.replace(GLYPH_MARK, glyph), palette, f"pasta {entry['name']}")
         icons.append(Icon("places", entry["name"], svg, entry.get("aliases", ())))
+    for entry in manifest.get("raster", []):
+        name = entry["name"]
+        if not list(RASTER.glob(f"{entry['context']}/*/{name}.png")):
+            fail(f"{entry['context']}/{name}: nenhum PNG em src/raster/{entry['context']}/<tamanho>/")
     names = [n for i in icons for n in (i.name, *i.aliases)]
+    names += [n for e in manifest.get("raster", []) for n in (e["name"], *e.get("aliases", ()))]
     dupes = {n for n in names if names.count(n) > 1}
     if dupes:
         fail(f"nomes repetidos: {', '.join(sorted(dupes))}")
     return icons
 
 
-def write_theme(theme, icons):
+def write_theme(theme, icons, rasters):
     base = OUT / theme["name"]
     if base.exists():
         shutil.rmtree(base)
@@ -106,7 +114,20 @@ def write_theme(theme, icons):
         for alias in icon.aliases:
             os.symlink(f"{icon.name}.svg", d / f"{alias}.svg")
 
-    dirs = sorted({i.subdir for i in icons})
+    fixed = []
+    for entry in rasters:
+        for png in sorted(RASTER.glob(f"{entry['context']}/*/{entry['name']}.png")):
+            m = RASTER_DIR_RE.match(png.parent.name)
+            if not m:
+                fail(f"{png}: pasta de tamanho inválida (use 48 ou 48@2x)")
+            subdir = f"{entry['context']}/{png.parent.name}"
+            (base / subdir).mkdir(parents=True, exist_ok=True)
+            shutil.copy2(png, base / subdir / png.name)
+            for alias in entry.get("aliases", ()):
+                os.symlink(png.name, base / subdir / f"{alias}.png")
+            fixed.append((subdir, int(m.group(1)), 2 if m.group(2) else 1))
+
+    dirs = sorted({i.subdir for i in icons} | {d for d, _, _ in fixed})
     lines = [
         "[Icon Theme]",
         f"Name={theme['name']}",
@@ -115,8 +136,13 @@ def write_theme(theme, icons):
         f"Directories={','.join(dirs)}",
         "",
     ]
+    sizes = {d: (size, scale) for d, size, scale in fixed}
     for d in dirs:
         context, kind = d.split("/")
+        if d in sizes:
+            size, scale = sizes[d]
+            lines += [f"[{d}]", f"Context={CONTEXTS[context]}", f"Size={size}", f"Scale={scale}", "Type=Fixed", ""]
+            continue
         lines += [f"[{d}]", f"Context={CONTEXTS[context]}", f"Size={16 if kind == 'symbolic' else 48}",
                   "MinSize=16", "MaxSize=512", "Type=Scalable", ""]
     (base / "index.theme").write_text("\n".join(lines))
@@ -241,11 +267,12 @@ def main():
     for icon in icons:
         validate(icon)
     OUT.mkdir(exist_ok=True)
-    base = write_theme(manifest["theme"], icons)
+    rasters = manifest.get("raster", [])
+    base = write_theme(manifest["theme"], icons, rasters)
     preview = write_preview(manifest["theme"], icons, manifest["palette"])
     write_logo(icons)
-    links = sum(len(i.aliases) for i in icons)
-    print(f"{len(icons)} ícones e {links} links em {base}")
+    links = sum(len(i.aliases) for i in icons) + sum(len(e.get("aliases", ())) for e in rasters)
+    print(f"{len(icons)} ícones, {len(rasters)} em PNG e {links} links em {base}")
     print(f"prévia: {preview}")
     print(f"logo: {LOGO_DIR} (SVG + PNG {', '.join(map(str, LOGO_SIZES))} px)")
 

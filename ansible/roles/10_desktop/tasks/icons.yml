@@ -1,0 +1,20 @@
+- name: Gerar o tema de ícones a partir de assets/icons
+  ansible.builtin.command:
+    argv: [python3, -I, "{{ codeos_repo }}/assets/icons/build.py"]
+  changed_when: false
+
+- name: Instalar o tema de ícones em /usr/share/icons/CodeOS
+  ansible.builtin.command:
+    argv: [rsync, -a, --no-times, --checksum, --delete, --exclude=icon-theme.cache, --chown=root:root, --itemize-changes,
+           "{{ codeos_repo }}/assets/icons/build/CodeOS/", /usr/share/icons/CodeOS/]
+  become: true
+  register: desktop_icons_sync
+  changed_when: desktop_icons_sync.stdout | length > 0
+
+# Sempre, e não como handler: se o play falhar depois da cópia, o handler não roda e o GTK
+# fica com um cache sem os ícones novos (o botão do menu sumiu assim). Leva menos de 1 s.
+- name: Atualizar o cache de ícones do CodeOS
+  ansible.builtin.command:
+    argv: [gtk-update-icon-cache, -f, -t, /usr/share/icons/CodeOS]
+  become: true
+  changed_when: desktop_icons_sync is changed

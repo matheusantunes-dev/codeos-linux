@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Tecla Super abre o menu
+Comment=Toque rápido na Super abre o menu iniciar (Ctrl+Esc); segurada, ela continua sendo modificador (Super+D, Super+←...)
+Exec=xcape -e "Super_L=Control_L|Escape"
+OnlyShowIn=XFCE;
+NoDisplay=true

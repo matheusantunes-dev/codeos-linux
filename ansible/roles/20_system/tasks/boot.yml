@@ -1,0 +1,45 @@
+- name: Gerar o tema de boot a partir de assets/boot
+  ansible.builtin.command:
+    argv: [python3, -I, "{{ codeos_repo }}/assets/boot/build_boot.py"]
+  changed_when: false
+
+- name: Instalar o tema de boot do CodeOS
+  ansible.builtin.copy:
+    src: "{{ codeos_repo }}/assets/boot/build/plymouth/{{ item }}"
+    dest: "/usr/share/plymouth/themes/codeos/{{ item }}"
+    mode: "0644"
+  become: true
+  loop: [codeos.plymouth, codeos.script, logo.png, glow.png]
+  notify: Atualizar o initramfs
+
+- name: Tema de boot ativo
+  ansible.builtin.command:
+    argv: [update-alternatives, --query, default.plymouth]
+  register: system_plymouth_alt
+  changed_when: false
+
+- name: Definir o CodeOS como tema de boot
+  ansible.builtin.shell: |
+    update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth \
+      /usr/share/plymouth/themes/codeos/codeos.plymouth 250
+    update-alternatives --set default.plymouth /usr/share/plymouth/themes/codeos/codeos.plymouth
+  become: true
+  when: "'Value: /usr/share/plymouth/themes/codeos/codeos.plymouth' not in system_plymouth_alt.stdout"
+  notify: Atualizar o initramfs
+
+- name: Driver de vídeo no initramfs (KMS cedo)
+  ansible.builtin.lineinfile:
+    path: /etc/initramfs-tools/modules
+    line: "{{ item }}"
+  become: true
+  loop: "{{ system_early_kms_modules }}"
+  notify: Atualizar o initramfs
+
+# Sobra da instalação pelo pendrive (pacote casper): confere /cdrom em todo boot e falha.
+- name: Desativar a verificação do pendrive de instalação (falhava em todo boot)
+  ansible.builtin.systemd_service:
+    name: casper-md5check.service
+    enabled: false
+    masked: true
+  become: true
+  failed_when: false

@@ -1,0 +1,32 @@
+- name: Ler o registro da última verificação do backup
+  ansible.builtin.slurp:
+    src: "{{ codeos_home }}/.local/state/codeos/backup-verified"
+  register: gate_stamp
+  failed_when: false
+
+- name: Exigir backup verificado nas últimas {{ codeos_backup_max_age_hours }} h
+  ansible.builtin.assert:
+    that:
+      - gate_verified_at | length > 0
+      - gate_age_hours | float < codeos_backup_max_age_hours
+    fail_msg: >-
+      Backup sem verificação recente{{ ' (última há ' ~ (gate_age_hours | float | round(1)) ~ ' h)' if gate_verified_at else '' }}.
+      Rode antes: ./backup/backup.sh run && ./backup/backup.sh verify
+    success_msg: "Backup verificado há {{ gate_age_hours | float | round(1) }} h."
+  vars:
+    gate_verified_at: >-
+      {{ (gate_stamp.content | b64decode | regex_search('verified_at=(\S+)', '\1') | first)
+         if gate_stamp.content is defined else '' }}
+    gate_age_hours: >-
+      {{ ((ansible_date_time.epoch | int) - (gate_verified_at | to_datetime('%Y-%m-%dT%H:%M:%S%z')).timestamp()) / 3600
+         if gate_verified_at else 9999 }}
+
+- name: Snapshot do Timeshift antes das mudanças (HDD externo precisa estar conectado)
+  ansible.builtin.command:
+    argv: [timeshift, --create, --comments, "CodeOS: antes de {{ ansible_run_tags | join(', ') }}", --tags, O]
+  become: true
+  register: gate_snapshot
+  changed_when: true
+  when:
+    - codeos_snapshot_before | bool
+    - not ansible_check_mode

@@ -1,0 +1,16 @@
+# Caminhos e usuário: o playbook roda como você; o sudo é pedido só nas tarefas com become.
+codeos_repo: "{{ playbook_dir | dirname }}"
+codeos_user: "{{ lookup('env', 'USER') }}"
+codeos_home: "{{ lookup('env', 'HOME') }}"
+codeos_cache: "{{ codeos_home }}/.cache/codeos"
+
+# Trava do Módulo 0: nenhum módulo roda sem backup verificado recentemente.
+codeos_backup_max_age_hours: 24
+# Snapshot do Timeshift (no HDD externo) antes de qualquer mudança.
+codeos_snapshot_before: true
+
+# Identidade do sistema (os-release, lsb-release, tela de login de texto, "About CodeOS").
+codeos_name: CodeOS
+codeos_version: "1.0"
+codeos_author: Matheus Antunes Reis
+codeos_url: https://github.com/matheusantunes-dev

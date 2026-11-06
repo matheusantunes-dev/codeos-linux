@@ -1,0 +1,5 @@
+#!/bin/sh
+# Conteúdo do plugin genmon no canto direito da barra: uma linha fina que mostra a área de trabalho.
+printf '<img>/usr/share/codeos/pixmaps/codeos-showdesktop-bar.png</img>'
+printf '<click>/usr/local/bin/codeos-showdesktop</click>'
+printf '<tool>Mostrar a área de trabalho</tool>\n'

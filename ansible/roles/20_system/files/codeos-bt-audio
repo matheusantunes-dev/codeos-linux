@@ -1,0 +1,93 @@
+#!/bin/bash
+# Áudio Bluetooth do CodeOS (serviço de usuário): devolve os fones que caíram e junta todas as saídas
+# Bluetooth numa só ("Fones Bluetooth (juntos)"), para dois fones tocarem o mesmo som.
+#
+# Reconexão com calma: tentar conectar um fone desligado deixa o rádio chamando (page) por vários
+# segundos; repetir isso a cada 5 s mantinha o adaptador transmitindo quase sem parar, e com ele dentro
+# de um gabinete, colado nos hubs, a porta USB caía ("disabled by hub (EMI?)") e o firmware não
+# carregava. Agora só volta quem estava conectado: logo depois da queda, e depois a 10 s, 20 s, 40 s...
+# até 5 min entre tentativas, desistindo após 30 min (fone ligado de novo depois disso se conecta sozinho).
+# Os fones conectados ficam guardados para serem chamados também depois de reiniciar. Fone que fica
+# "conectado" sem o perfil de áudio depois de uma queda do adaptador tem a conexão refeita.
+set -u
+SINK=fones_juntos_agora
+ESTADO=${XDG_STATE_HOME:-$HOME/.local/state}/codeos/bt-audio
+DESISTIR=1800
+ESPERA_MAX=300
+
+declare -A queda=() proxima=() espera=() sem_audio=()
+ultimo_sinks=""
+mkdir -p "${ESTADO%/*}"
+
+agendar() {  # $1 caiu agora: primeira tentativa já
+    queda[$1]=$(date +%s); proxima[$1]=0; espera[$1]=10
+}
+
+# na partida, os fones da última sessão
+if [ -r "$ESTADO" ]; then
+    while read -r m; do [ -n "$m" ] && agendar "$m"; done <"$ESTADO"
+fi
+conectados_antes=""
+
+while true; do
+    agora=$(date +%s)
+    if timeout 5 bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'; then
+        conectados=$(timeout 5 bluetoothctl devices Connected 2>/dev/null | awk '{print $2}' | sort)
+        # quem estava e saiu: reconectar
+        for m in $conectados_antes; do
+            grep -qx "$m" <<<"$conectados" || agendar "$m"
+        done
+        for m in $conectados; do unset "queda[$m]" "proxima[$m]" "espera[$m]"; done
+        # fone que volta depois de uma queda do adaptador pode ficar "conectado" sem o perfil de áudio (o
+        # A2DP falha no meio do caminho): sem saída de som por 10 s, desconecta e conecta de novo; se não
+        # adiantar, tenta outra vez a cada 1 min
+        cartoes=$(pactl list short cards 2>/dev/null)
+        for m in $conectados; do
+            if grep -q "bluez_card.${m//:/_}" <<<"$cartoes" \
+               || ! timeout 5 bluetoothctl info "$m" 2>/dev/null | grep -q 'Audio Sink'; then
+                unset "sem_audio[$m]"
+                continue
+            fi
+            sem_audio[$m]=$(( ${sem_audio[$m]:-0} + 5 ))
+            if (( sem_audio[$m] == 10 || (sem_audio[$m] > 10 && sem_audio[$m] % 60 == 10) )); then
+                echo "$m: conectado sem áudio, refazendo a conexão"
+                timeout 5 bluetoothctl disconnect "$m" >/dev/null 2>&1
+                sleep 2
+                timeout 12 bluetoothctl connect "$m" >/dev/null 2>&1 && echo "$m: áudio de volta"
+            fi
+        done
+        for m in "${!queda[@]}"; do
+            if (( agora - queda[$m] > DESISTIR )); then
+                echo "$m: sem resposta há 30 min, deixando de chamar"
+                unset "queda[$m]" "proxima[$m]" "espera[$m]"
+            elif (( agora >= proxima[$m] )); then
+                timeout 12 bluetoothctl connect "$m" >/dev/null 2>&1 && echo "$m: reconectado"
+                proxima[$m]=$(( $(date +%s) + espera[$m] ))
+                espera[$m]=$(( espera[$m] * 2 > ESPERA_MAX ? ESPERA_MAX : espera[$m] * 2 ))
+            fi
+        done
+        if [ "$conectados" != "$conectados_antes" ]; then
+            printf '%s\n' $conectados "${!queda[@]}" | sort -u | grep . >"$ESTADO.tmp"
+            mv "$ESTADO.tmp" "$ESTADO"
+        fi
+        conectados_antes=$conectados
+    else
+        # sem controlador (o codeos-bt-watchdog cuida dele): quando voltar, chamar todo mundo de novo
+        for m in $conectados_antes "${!queda[@]}"; do agendar "$m"; done
+        conectados_antes=""
+    fi
+
+    # saída combinada, recriada quando a lista de saídas Bluetooth muda
+    sinks=$(pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output\./ {print $2}' | sort | paste -sd,)
+    if [ "$sinks" != "$ultimo_sinks" ] || { [ -n "$sinks" ] && ! pactl list short sinks | grep -q "	$SINK	"; }; then
+        pactl list short modules | awk -v s="sink_name=$SINK" '$2=="module-combine-sink" && index($0,s) {print $1}' |
+            xargs -r -n1 pactl unload-module
+        if [ -n "$sinks" ]; then
+            pactl load-module module-combine-sink sink_name=$SINK \
+                sink_properties=device.description="Fones_Bluetooth_(juntos)" slaves="$sinks" adjust_time=1 >/dev/null &&
+                pactl set-default-sink $SINK
+        fi
+        ultimo_sinks=$sinks
+    fi
+    sleep 5
+done
