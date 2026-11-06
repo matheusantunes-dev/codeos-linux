@@ -9,8 +9,8 @@
 #   /usr/share/codeos/assets    ícones e tema de boot já gerados, logo e papéis de parede
 #   /usr/lib/codeos/            aplicar (sistema, como root) e sessao (padrões no login)
 #   chave e endereço do repositório APT, quando packages/codeos-archive-keyring.asc existe
-# Precisa: dpkg-deb, gpg, rsync, ansible-galaxy (ansible-core) e python3 com PIL, cairo e Rsvg
-# (sudo apt install ansible-core gir1.2-rsvg-2.0 python3-pil python3-cairo).
+# Precisa: dpkg-deb, gpg, rsync, ffmpeg, ansible-galaxy (ansible-core) e python3 com PIL, cairo e Rsvg
+# (sudo apt install ansible-core ffmpeg gir1.2-rsvg-2.0 python3-pil python3-cairo).
 set -euo pipefail
 export LC_ALL=C.UTF-8
 

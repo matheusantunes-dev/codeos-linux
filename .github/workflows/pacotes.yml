@@ -29,7 +29,7 @@ jobs:
       - name: Ferramentas
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ansible-core apt-utils gnupg rsync \
+          sudo apt-get install -y --no-install-recommends ansible-core apt-utils gnupg rsync ffmpeg \
             gir1.2-rsvg-2.0 python3-gi python3-gi-cairo python3-cairo python3-pil
 
       - name: Pacote codeos
