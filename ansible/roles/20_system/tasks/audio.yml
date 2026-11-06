@@ -41,6 +41,7 @@
   ansible.builtin.file:
     path: "{{ codeos_home }}/.config/systemd/user/default.target.wants/fones-vigia.service"
     state: absent
+  when: not codeos_imagem
 
 - name: Remover a cópia provisória do serviço de fones da sua conta
   ansible.builtin.file:
@@ -54,6 +55,7 @@
 # O fluidsynth (sintetizador de MIDI) subia em toda sessão carregando um banco de sons (~160 MB parado).
 # Como no Windows, onde o sintetizador MIDI só é carregado quando um programa toca MIDI: fora do boot;
 # quem precisar liga com "systemctl --user start fluidsynth". O pacote continua (o Lutris depende dele).
+  when: not codeos_imagem
 - name: Sintetizador MIDI (fluidsynth) fora da sessão
   ansible.builtin.command: systemctl --global disable fluidsynth.service
   args:
@@ -105,3 +107,4 @@
   ansible.builtin.file:
     path: "{{ codeos_home }}/.config/pipewire/pipewire.conf.d/iriunaudio.conf"
     state: absent
+  when: not codeos_imagem

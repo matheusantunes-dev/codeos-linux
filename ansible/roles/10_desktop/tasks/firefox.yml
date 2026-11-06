@@ -1,0 +1,35 @@
+# Firefox oficial da Mozilla (repositório apt dela), como recomenda a própria Mozilla para Debian/Ubuntu:
+# o do Ubuntu é um pacote de transição para o snap. Vale na imagem da ISO; nesta máquina o Firefox do
+# Mint fica até a reinstalação (trocar agora levaria junto pacotes do Mint de que ele depende).
+- name: Chave do repositório da Mozilla
+  ansible.builtin.get_url:
+    url: https://packages.mozilla.org/apt/repo-signing-key.gpg
+    dest: /etc/apt/keyrings/packages.mozilla.org.asc
+    mode: "0644"
+  become: true
+
+- name: Repositório da Mozilla
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/mozilla.list
+    content: |
+      deb [signed-by=/etc/apt/keyrings/packages.mozilla.org.asc] https://packages.mozilla.org/apt mozilla main
+    mode: "0644"
+  become: true
+
+# o Firefox da Mozilla sempre na frente do pacote de transição (snap) do Ubuntu
+- name: Firefox da Mozilla na frente do do Ubuntu
+  ansible.builtin.copy:
+    dest: /etc/apt/preferences.d/mozilla
+    content: |
+      Package: *
+      Pin: origin packages.mozilla.org
+      Pin-Priority: 1000
+    mode: "0644"
+  become: true
+
+- name: Firefox
+  ansible.builtin.apt:
+    name: firefox
+    state: latest
+    update_cache: true
+  become: true

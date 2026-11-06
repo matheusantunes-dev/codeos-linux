@@ -1,0 +1,6 @@
+# Ajustes de uma máquina específica (maquinas/<nome do computador>.yml); vazios em qualquer outra.
+maquina_arquivos: []
+maquina_kernel_args: ""
+maquina_pacotes: []
+maquina_nbfc_versao: ""
+maquina_dir: "{{ playbook_dir }}/maquinas/{{ ansible_hostname }}"

@@ -50,7 +50,7 @@ O `apply.sh` pede a senha de administrador uma vez, confere no sudo e só então
 ```
 
 ```bash
-./ansible/apply.sh site.yml --tags desktop,system,dev
+./ansible/apply.sh site.yml --tags desktop,system,dev,maquina
 ```
 
 | Tag | Módulo | O que faz |
@@ -58,6 +58,9 @@ O `apply.sh` pede a senha de administrador uma vez, confere no sudo e só então
 | `desktop` | 1 | Xfce estilo Windows numa sessão "CodeOS", a única da tela de login (o Cinnamon e a sessão Xfce simples saem): barra embaixo, menu iniciar com o logo, tema Fluent, fonte Selawik, ícones CodeOS, atalhos do Windows, programas fixados na barra de tarefas (botão direito → Pin to taskbar), prévia das janelas ao passar o mouse e marcação dos programas abertos, histórico da área de transferência (Super+V), seletor de cor (Super+Shift+C), copiar texto da tela (Super+Shift+T), janela sempre por cima (Ctrl+Super+T), terminal que desce do topo (Super+`), recorte de tela direto para o Ctrl+V (Super+Shift+S), tela de boas-vindas com extras opcionais, programas do Windows (.exe/.msi) com dois cliques pelo Wine, .rar e .7z no botão direito, fontes com as medidas das do Office, efeitos suaves (picom) e 12 papéis de parede de paisagens com luz quente |
 | `system` | 2 | Boot centralizado nas duas telas desde o primeiro quadro (driver de vídeo no initramfs), USB sem economia de energia nos hubs, vigia que reconecta o adaptador Bluetooth quando ele trava, dois fones Bluetooth tocando juntos e reconectados sem sobrecarregar o rádio, Wake-on-LAN na placa certa, zram e limites de arquivos para IDEs; firewall ligado, SSH fechado e atualizações de segurança automáticas |
 | `dev` | 6 | Ferramentas de desenvolvimento para todo usuário: git, gh, jq, fd, fzf, bat, ripgrep, cmake, sqlite3, meld, pipx, btop; mise (versões de Node, Python, Go, Rust e Java por projeto); Docker ligado só no primeiro uso, Podman e Distrobox (outras distros integradas, como o WSL); earlyoom. Na tela de boas-vindas, a página "Developer" configura Git, chave SSH, GitHub, linguagens e editores |
+| `maquina` | — | Ajustes só de uma máquina, em `ansible/maquinas/<nome do computador>.yml` (este notebook: tela interna desligada, regras de dispositivos, ventoinha, AnyDesk). Em outra máquina e na ISO, nada dele vale |
+
+Para montar o sistema da ISO (num chroot, sem sessão e sem conta de pessoa): `ansible-playbook site.yml -e codeos_imagem=true --tags desktop,system,dev`.
 
 Para ver a sessão CodeOS sem sair da sua (por exemplo, pelo AnyDesk): `./ansible/testar-sessao.sh`.
 

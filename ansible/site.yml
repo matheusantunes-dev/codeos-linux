@@ -1,16 +1,30 @@
 # CodeOS — aplica os módulos no sistema atual.
 #   Prévia sem mudar nada:  ansible-playbook site.yml --tags desktop --check --diff
 #   Aplicar um módulo:       ansible-playbook site.yml --tags desktop
-#   Tudo:                    ./apply.sh site.yml --tags desktop,system,dev
+#   Tudo:                    ./apply.sh site.yml --tags desktop,system,dev,maquina
 - name: CodeOS
   hosts: localhost
   gather_facts: true
+  pre_tasks:
+    # configuração só desta máquina (maquinas/<nome do computador>.yml), quando existe
+    - name: Configuração desta máquina
+      ansible.builtin.include_vars:
+        file: "{{ item }}"
+      with_first_found:
+        - files: ["maquinas/{{ ansible_hostname }}.yml"]
+          skip: true
+      tags: [always]
+      when: not codeos_imagem
   roles:
     - role: 00_gate
       tags: [always]
+      when: not codeos_imagem
     - role: 10_desktop
       tags: [desktop]
     - role: 20_system
       tags: [system]
     - role: 30_dev
       tags: [dev]
+    - role: 90_maquina
+      tags: [maquina]
+      when: not codeos_imagem

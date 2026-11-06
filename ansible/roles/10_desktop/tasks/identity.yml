@@ -57,3 +57,4 @@
     [ -z "$mudou" ] || echo mudou
   register: desktop_gsettings_tema
   changed_when: "'mudou' in desktop_gsettings_tema.stdout"
+  when: not codeos_imagem

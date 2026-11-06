@@ -14,6 +14,7 @@
     groups: video
     append: true
   become: true
+  when: not codeos_imagem
 
 - name: Contas novas também no grupo do brilho da tela
   ansible.builtin.lineinfile:
@@ -56,6 +57,15 @@
   community.general.ufw:
     state: enabled
   become: true
+  when: not codeos_imagem
+
+- name: Firewall ligado no primeiro boot (imagem da ISO)
+  ansible.builtin.lineinfile:
+    path: /etc/ufw/ufw.conf
+    regexp: "^ENABLED="
+    line: "ENABLED=yes"
+  become: true
+  when: codeos_imagem
 
 # O Ubuntu desktop não traz servidor SSH; quem instalou o openssh-server ganha o ssh.socket escutando na
 # porta 22 de todas as redes. Fica desligado; para usar: system_ssh_server: true (host_vars).
@@ -65,7 +75,7 @@
     for u in ssh.socket ssh.service; do
       systemctl list-unit-files "$u" --no-legend 2>/dev/null | grep -q . || continue
       if systemctl is-enabled --quiet "$u" || systemctl is-active --quiet "$u"; then
-        systemctl disable --now "$u" && mudou=1
+        systemctl disable {{ '' if codeos_imagem else '--now' }} "$u" && mudou=1
       fi
     done
     [ -z "$mudou" ] || echo mudou

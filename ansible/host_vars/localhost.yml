@@ -1,6 +1,0 @@
-# Este notebook: tela principal HDMI-1, segunda tela VGA-1 (a do notebook fica desligada no boot).
-desktop_secondary_output: VGA-1
-
-# a regra "tee /sys/class/backlight/*/brightness" sem senha aceitava qualquer caminho (= root sem senha);
-# o ~/bin/toggle_screen.sh passou a usar o brightnessctl, que não precisa de administrador
-system_sudoers_remove: [backlight_control]

@@ -1,0 +1,2 @@
+ACTION=="add", SUBSYSTEM=="net", NAME=="enp2s0", RUN+="/sbin/ethtool -s enp2s0 wol g"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{vendor}=="0x10ec", ATTR{power/control}="on"

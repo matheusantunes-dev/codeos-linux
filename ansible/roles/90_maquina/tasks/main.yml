@@ -1,0 +1,73 @@
+# Ajustes que valem só nesta máquina, guardados no projeto para a reinstalação não perdê-los.
+- name: Programas desta máquina
+  ansible.builtin.apt:
+    name: "{{ maquina_pacotes }}"
+    state: present
+  become: true
+  when: maquina_pacotes | length > 0
+
+- name: Pastas dos arquivos desta máquina
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  become: true
+  loop: "{{ maquina_arquivos | map(attribute='dest') | map('dirname') | unique | list }}"
+
+- name: Arquivos desta máquina (regras de dispositivos, telas, sudo, ventoinha)
+  ansible.builtin.copy:
+    src: "{{ maquina_dir }}/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode | default('0644') }}"
+    validate: "{{ 'visudo -cf %s' if item.validar_sudo | default(false) else omit }}"
+  become: true
+  loop: "{{ maquina_arquivos }}"
+  register: maquina_copias
+
+- name: Recarregar as regras de dispositivos
+  ansible.builtin.command: udevadm control --reload-rules
+  become: true
+  when: maquina_copias.results | selectattr('changed') | map(attribute='item.dest') | select('search', 'udev') | list | length > 0
+
+- name: Parâmetros do kernel desta máquina
+  ansible.builtin.copy:
+    dest: /etc/default/grub.d/90-codeos-maquina.cfg
+    content: |
+      # Gerenciado pelo CodeOS (maquinas/{{ ansible_hostname }}.yml): parâmetros só desta máquina.
+      GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT {{ maquina_kernel_args }}"
+    mode: "0644"
+  become: true
+  register: maquina_grub
+  when: maquina_kernel_args | length > 0
+
+- name: Atualizar o menu de boot
+  ansible.builtin.command: update-grub
+  become: true
+  when: maquina_grub is changed
+
+# NBFC-Linux não está no Ubuntu: compila a versão fixada do repositório oficial
+- name: NBFC-Linux (ventoinha)
+  when: maquina_nbfc_versao | length > 0
+  block:
+    - name: Código do NBFC-Linux
+      ansible.builtin.git:
+        repo: https://github.com/nbfc-linux/nbfc-linux.git
+        dest: /usr/local/src/nbfc-linux
+        version: "{{ maquina_nbfc_versao }}"
+      become: true
+      register: maquina_nbfc_src
+
+    - name: Compilar e instalar o NBFC-Linux
+      ansible.builtin.shell: |
+        cd /usr/local/src/nbfc-linux
+        make && make install
+      become: true
+      when: maquina_nbfc_src is changed
+
+    - name: Serviço da ventoinha ligado
+      ansible.builtin.systemd_service:
+        name: nbfc_service
+        enabled: true
+        state: started
+        daemon_reload: true
+      become: true

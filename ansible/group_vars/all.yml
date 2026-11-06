@@ -14,3 +14,9 @@ codeos_name: CodeOS
 codeos_version: "1.0"
 codeos_author: Matheus Antunes Reis
 codeos_url: https://github.com/matheusantunes-dev
+
+# Modo imagem: true quando os papéis montam o sistema da ISO (num chroot, sem sessão gráfica, sem conta de
+# pessoa e sem serviços rodando). Pula a trava de backup, o que mexe na conta e na sessão (padrões
+# levados para a sua conta, limpezas em ~, gsettings), os ajustes da máquina e só habilita os serviços
+# em vez de ligá-los. Uso: ansible-playbook site.yml -e codeos_imagem=true --tags desktop,system,dev
+codeos_imagem: false

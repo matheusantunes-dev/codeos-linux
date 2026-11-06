@@ -25,7 +25,7 @@
   ansible.builtin.systemd_service:
     name: codeos-bt-watchdog.service
     enabled: true
-    state: started
+    state: "{{ omit if codeos_imagem else 'started' }}"
     daemon_reload: true
   become: true
 

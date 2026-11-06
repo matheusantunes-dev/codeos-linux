@@ -37,6 +37,7 @@
     /usr/local/bin/codeos-xfconf-merge --registrar
     {{ desktop_xdg_dir }}/xfce4/xfconf/xfce-perchannel-xml/*.xml
   changed_when: false
+  when: not codeos_imagem
 
 - name: Configuração padrão do Xfce (painel, janelas, aparência, atalhos)
   ansible.builtin.template:
@@ -54,6 +55,7 @@
     - thunar.xml
     - xfce4-terminal.xml
     - xfce4-clipman.xml
+    - xfce4-session.xml
   register: desktop_xfconf_defaults
 
 # Valem só na sessão CodeOS e o usuário pode desligar em Configurações > Sessão e inicialização,
@@ -150,7 +152,9 @@
             | list) }}"
   register: desktop_xfconf_merge
   changed_when: desktop_xfconf_merge.stdout | length > 0
-  when: lookup('ansible.builtin.env', 'DBUS_SESSION_BUS_ADDRESS') | length > 0
+  when:
+    - not codeos_imagem
+    - lookup('ansible.builtin.env', 'DBUS_SESSION_BUS_ADDRESS') | length > 0
 
 # O xfconfd guarda os padrões do sistema em memória: reiniciado (o TERM grava o que está pendente), ele
 # relê os arquivos; a barra, a área de trabalho, o xfsettingsd e o xfwm4 recarregam junto.
@@ -164,6 +168,7 @@
     setsid xfwm4 --replace >/dev/null 2>&1 &
     xfdesktop --reload || true
   when:
+    - not codeos_imagem
     - lookup('ansible.builtin.env', 'DBUS_SESSION_BUS_ADDRESS') | length > 0
     - lookup('ansible.builtin.env', 'DISPLAY') | length > 0
     - desktop_xfconf_defaults is changed or desktop_xfconf_merge is changed
@@ -440,9 +445,11 @@
     - "{{ codeos_home }}/.local/lib/codeos/libcodeos-bandeja-teste.so"
 
 # cópia de teste das correções do tema na conta (o tema instalado já as traz e ela passaria na frente)
+  when: not codeos_imagem
 - name: Remover a cópia de teste do CSS do tema da sua conta
   ansible.builtin.shell: |
     f="{{ codeos_home }}/.config/gtk-3.0/gtk.css"
     if grep -q 'Teste das correções do CodeOS' "$f" 2>/dev/null; then rm -f "$f"; echo removido; fi
   register: desktop_gtk_css_teste
   changed_when: "'removido' in desktop_gtk_css_teste.stdout"
+  when: not codeos_imagem

@@ -28,13 +28,16 @@
            org.freedesktop.Accounts.User, XSession]
   register: desktop_xsession
   changed_when: false
+  when: not codeos_imagem
 
 - name: Sessão CodeOS como a última usada da sua conta
   ansible.builtin.command:
     argv: [busctl, call, org.freedesktop.Accounts, "/org/freedesktop/Accounts/User{{ ansible_user_uid }}",
            org.freedesktop.Accounts.User, SetXSession, s, "{{ desktop_session }}"]
   become: true
-  when: desktop_xsession.stdout != 's "' ~ desktop_session ~ '"'
+  when:
+    - not codeos_imagem
+    - desktop_xsession.stdout != 's "' ~ desktop_session ~ '"'
   changed_when: true
 
 # marca horizontal de 40 px (assets/logo/build_greeter_logo.py): o slick-greeter não redimensiona a logo

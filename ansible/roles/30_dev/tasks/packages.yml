@@ -19,7 +19,7 @@
   ansible.builtin.systemd_service:
     name: earlyoom
     enabled: true
-    state: started
+    state: "{{ omit if codeos_imagem else 'started' }}"
   become: true
 
 # o mise troca a versão das linguagens ao entrar na pasta de cada projeto (.mise.toml), em todo terminal

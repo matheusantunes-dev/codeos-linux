@@ -1,0 +1,33 @@
+# Configuração só deste notebook (ASUS K45A). O site.yml carrega maquinas/<nome do computador>.yml quando
+# ele existe; em outra máquina, e na ISO, nada daqui vale. Os arquivos ficam em maquinas/matheusdev-K45A/.
+
+# telas: principal HDMI-1, segunda tela VGA-1; a do notebook (LVDS-1) fica desligada
+desktop_secondary_output: VGA-1
+
+# a regra "tee /sys/class/backlight/*/brightness" sem senha aceitava qualquer caminho (= root sem senha);
+# o ~/bin/toggle_screen.sh passou a usar o brightnessctl, que não precisa de administrador
+system_sudoers_remove: [backlight_control]
+
+maquina_arquivos:
+  # tela interna desligada também no Xorg (no boot, pelo parâmetro do kernel abaixo)
+  - { src: 10-disable-lvds.conf, dest: /etc/X11/xorg.conf.d/10-disable-lvds.conf }
+  # teclado Redragon (configurador), webcam interna e uma porta USB desligadas, Wake-on-LAN, OpenRGB
+  - { src: udev/60-openrgb.rules, dest: /etc/udev/rules.d/60-openrgb.rules }
+  - { src: udev/70-wol.rules, dest: /etc/udev/rules.d/70-wol.rules }
+  - { src: udev/80-asuskill.rules, dest: /etc/udev/rules.d/80-asuskill.rules }
+  - { src: udev/99-disable-internal-webcam.rules, dest: /etc/udev/rules.d/99-disable-internal-webcam.rules }
+  - { src: udev/99-redragon-holtek.rules, dest: /etc/udev/rules.d/99-redragon-holtek.rules }
+  - { src: udev/99-redragon-storm.rules, dest: /etc/udev/rules.d/99-redragon-storm.rules }
+  # parar e ligar o AnyDesk sem senha (comandos fixos, sem curinga)
+  - { src: anydesk_control, dest: /etc/sudoers.d/anydesk_control, mode: "0440", validar_sudo: true }
+  # controle da ventoinha: perfil do modelo mais próximo (o K45A não tem perfil próprio)
+  - { src: nbfc.json, dest: /etc/nbfc/nbfc.json }
+
+# parâmetros do kernel: tela interna desligada desde o boot
+maquina_kernel_args: "video=LVDS-1:d"
+
+# programas desta máquina
+maquina_pacotes: [input-remapper, ethtool]
+
+# NBFC-Linux (ventoinha), compilado do código-fonte na versão que está instalada
+maquina_nbfc_versao: 59b4b4f

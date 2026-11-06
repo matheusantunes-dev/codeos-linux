@@ -23,7 +23,7 @@
     state: restarted
     daemon_reload: true
   become: true
-  when: system_zram_conf is changed
+  when: system_zram_conf is changed and not codeos_imagem
 
 - name: Limites para IDEs e ferramentas que observam muitos arquivos
   ansible.builtin.copy:
