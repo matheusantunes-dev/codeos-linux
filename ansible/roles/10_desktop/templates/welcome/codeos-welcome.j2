@@ -142,6 +142,8 @@ def instalado(como):
     if tipo == "deb":
         r = subprocess.run(["dpkg-query", "-W", "-f=${Status}", nome], capture_output=True, text=True)
         return "install ok installed" in r.stdout
+    if not GLib.find_program_in_path("flatpak"):
+        return False
     r = subprocess.run(["flatpak", "info", nome], capture_output=True)
     return r.returncode == 0
 
@@ -591,7 +593,9 @@ class BoasVindas(Gtk.Window):
 
 
 def main():
-    if "--autostart" in sys.argv and not mostrar_ao_iniciar():
+    # na sessão "live" do pendrive quem abre é o instalador; a boas-vindas fica para o sistema instalado
+    sessao_live = os.path.exists("/cdrom/casper/filesystem.squashfs")
+    if "--autostart" in sys.argv and (sessao_live or not mostrar_ao_iniciar()):
         return
     janela = BoasVindas()
     janela.connect("destroy", Gtk.main_quit)

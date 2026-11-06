@@ -1,19 +1,10 @@
-# Distribuição do Firefox no CodeOS (no lugar do distribution.ini do Firefox do Mint, desviado com
-# dpkg-divert). Mesmas preferências do original, com o nome do CodeOS.
-
+# Distribuição do Firefox no CodeOS (no lugar do distribution.ini do pacote da Mozilla, desviado com
+# dpkg-divert para distribution.ini.real): as preferências do pacote da Mozilla, com o nome do CodeOS.
 [Global]
-id=codeos-001
-version=1.0
+id=codeos
+version={{ codeos_version }}
 about=Mozilla Firefox for {{ codeos_name }}
 
 [Preferences]
-app.distributor.channel="{{ codeos_version }}"
-app.distributor="codeos"
-app.partner.codeos="codeos"
-app.update.enabled=false
-browser.shell.checkDefaultBrowser=false
 intl.locale.requested=""
-mozilla.partner.id="codeos"
-widget.content.gtk-theme-override="#"
-browser.backspace_action=0
-browser.tabs.inTitlebar=0
+browser.gnome-search-provider.enabled=true

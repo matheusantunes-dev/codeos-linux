@@ -7,6 +7,7 @@
       # Gerenciado pelo CodeOS (ansible/roles/10_desktop); vem depois do 70-linuxmint.conf.
       [Seat:*]
       user-session={{ desktop_session }}
+      greeter-session=slick-greeter
     mode: "0644"
   become: true
 

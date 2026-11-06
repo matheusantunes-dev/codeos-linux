@@ -48,7 +48,7 @@ Registro curto das decisões e do porquê. A primeira auditoria (2026-11-03) aju
 | D19 | Ajustes de uma máquina em `ansible/maquinas/<hostname>.yml` + pasta com os arquivos, aplicados pelo papel `90_maquina` (tag `maquina`) | A reinstalação não perde o que foi feito à mão (tela interna, udev, ventoinha NBFC compilada da versão fixada, sudo do AnyDesk), e nada disso vai para a ISO ou para outra máquina |
 | D20 | Modo imagem (`codeos_imagem=true`): sem trava de backup, sem tarefas da conta e da sessão, serviços só habilitados, firewall ligado pelo arquivo, ajustes de máquina fora | Os mesmos papéis montam o sistema da ISO num chroot |
 | D21 | Sessão não é salva ao sair e o Thunar não sobe no login (padrão do sistema; a escolha da conta continua valendo) | Como no Windows: cada login começa limpo; o Thunar abre sob demanda |
-| D22 | Na ISO, Firefox do repositório apt da Mozilla com prioridade 1000 | O `firefox` do Ubuntu é transição para o snap; o do Mint fica só nesta máquina até a reinstalação |
+| D22 | Firefox do repositório apt da Mozilla com prioridade 1000, em toda máquina e na ISO | O `firefox` do Ubuntu é transição para o snap e o do Mint é recompilado; nesta máquina a troca aconteceu em 2026-11-05 (sem perder o perfil) |
 
 ## Limites físicos encontrados (não resolvíveis por software)
 

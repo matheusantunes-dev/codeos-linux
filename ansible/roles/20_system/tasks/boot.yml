@@ -2,6 +2,15 @@
   ansible.builtin.command:
     argv: [python3, -I, "{{ codeos_repo }}/assets/boot/build_boot.py"]
   changed_when: false
+  # na imagem da ISO os arquivos já vêm gerados (iso/construir.sh roda o gerador com a sua conta)
+  when: not codeos_imagem
+
+- name: Pasta do tema de boot do CodeOS
+  ansible.builtin.file:
+    path: /usr/share/plymouth/themes/codeos
+    state: directory
+    mode: "0755"
+  become: true
 
 - name: Instalar o tema de boot do CodeOS
   ansible.builtin.copy:

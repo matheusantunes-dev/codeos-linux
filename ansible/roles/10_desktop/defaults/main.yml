@@ -19,6 +19,8 @@ desktop_packages:
   - x11-utils               # xprop (Alt+F4)
   - xcape                   # Super sozinha abre o menu sem quebrar Super+D, Super+←...
   - python3-xlib            # luz noturna: curva de cor de cada monitor (RandR)
+  - build-essential         # gcc e make: compilam os módulos e vigias do CodeOS (o Xubuntu não traz)
+  - pkg-config
   - libgtk-3-dev            # compila o módulo que põe "Apply to all displays" no seletor de papel de parede
   - libwnck-3-dev           # compila o módulo "Pin to taskbar" da barra de tarefas
   - libxcomposite-dev       # prévia das janelas ao passar o mouse na barra (mesmo módulo)
@@ -31,7 +33,9 @@ desktop_packages:
   - mousepad                # editor de texto (no lugar do xed do Mint)
   - ristretto               # visualizador de imagens (no lugar do xviewer)
   - atril                   # leitor de PDF (no lugar do xreader)
+  - slick-greeter           # tela de login do CodeOS (o Xubuntu traz o lightdm-gtk-greeter)
   - light-locker            # bloqueio de tela pela própria tela de login (Super+L, suspender, trocar usuário)
+  - flatpak                 # loja Flathub (Bottles, Zed na tela de boas-vindas), como no Mint, Pop!_OS e Zorin
   - wsdd                    # descoberta de computadores Windows/Samba na rede (Thunar > Rede)
   - papirus-icon-theme      # o tema CodeOS herda dele
   - fonts-jetbrains-mono
@@ -66,6 +70,11 @@ desktop_mono_font: JetBrains Mono 10
 # Defaults da sessão "CodeOS": o Xsession do Ubuntu põe /etc/xdg/xdg-<sessão> na frente do
 # XDG_CONFIG_DIRS, então nada aqui sobrescreve arquivo de pacote.
 desktop_xdg_dir: /etc/xdg/xdg-codeos
+# programas fixados na barra de quem ainda não fixou nada (como o Explorador e o navegador no Windows)
+desktop_taskbar_default_pins:
+  - /usr/share/applications/thunar.desktop
+  - /usr/share/applications/firefox.desktop
+  - /usr/share/applications/xfce4-terminal.desktop
 
 # Papéis de parede (assets/wallpapers, créditos em CREDITS.md) e o padrão da sessão.
 desktop_wallpaper_dir: /usr/share/backgrounds/codeos

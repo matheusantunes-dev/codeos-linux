@@ -19,9 +19,8 @@
 - name: Tela de login e sessão padrão
   ansible.builtin.import_tasks: login.yml
 
-- name: Firefox oficial da Mozilla (só na imagem da ISO)
+- name: Firefox oficial da Mozilla
   ansible.builtin.import_tasks: firefox.yml
-  when: codeos_imagem
 
 - name: Tela de boas-vindas
   ansible.builtin.import_tasks: welcome.yml

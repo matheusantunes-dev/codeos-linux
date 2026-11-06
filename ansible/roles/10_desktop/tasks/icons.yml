@@ -2,6 +2,8 @@
   ansible.builtin.command:
     argv: [python3, -I, "{{ codeos_repo }}/assets/icons/build.py"]
   changed_when: false
+  # na imagem da ISO os arquivos já vêm gerados (iso/construir.sh roda o gerador com a sua conta)
+  when: not codeos_imagem
 
 - name: Instalar o tema de ícones em /usr/share/icons/CodeOS
   ansible.builtin.command:

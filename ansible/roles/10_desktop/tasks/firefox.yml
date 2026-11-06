@@ -1,6 +1,5 @@
 # Firefox oficial da Mozilla (repositório apt dela), como recomenda a própria Mozilla para Debian/Ubuntu:
-# o do Ubuntu é um pacote de transição para o snap. Vale na imagem da ISO; nesta máquina o Firefox do
-# Mint fica até a reinstalação (trocar agora levaria junto pacotes do Mint de que ele depende).
+# o do Ubuntu é um pacote de transição para o snap, e o do Mint é recompilado por ele.
 - name: Chave do repositório da Mozilla
   ansible.builtin.get_url:
     url: https://packages.mozilla.org/apt/repo-signing-key.gpg
@@ -32,4 +31,19 @@
     name: firefox
     state: latest
     update_cache: true
+  become: true
+
+# os pacotes de idioma do Firefox do Mint são de outra versão e o Firefox da Mozilla não os usa
+- name: Tirar os pacotes de idioma do Firefox do Mint
+  ansible.builtin.shell: |
+    velhos=$(dpkg-query -W -f='${Package} ${Version}\n' 'firefox-locale-*' 2>/dev/null | awk '/linuxmint/ {print $1}')
+    [ -z "$velhos" ] || { apt-get -y purge $velhos >/dev/null && echo mudou; }
+  become: true
+  register: desktop_firefox_locale
+  changed_when: "'mudou' in desktop_firefox_locale.stdout"
+
+- name: Firefox em português do Brasil (o idioma segue o do sistema)
+  ansible.builtin.apt:
+    name: firefox-l10n-pt-br
+    state: present
   become: true

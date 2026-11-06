@@ -2,6 +2,15 @@
 # escolha fica em ~/.config/codeos/welcome) e fica no menu. É ligada pelo sistema, não copiada para a
 # conta, então vale também para uma pasta pessoal restaurada do backup. Os extras opcionais são
 # instalados pelo codeos-welcome-helper, que só aceita os itens dele, com a senha pedida pelo pkexec.
+# O Flathub vem ligado para todos, como no Mint, no Pop!_OS e no Zorin (o Ubuntu não traz o flatpak).
+- name: Repositório Flathub do sistema
+  community.general.flatpak_remote:
+    name: flathub
+    flatpakrepo_url: https://dl.flathub.org/repo/flathub.flatpakrepo
+    method: system
+    state: present
+  become: true
+
 - name: Programa da tela de boas-vindas
   ansible.builtin.template:
     src: welcome/codeos-welcome.j2

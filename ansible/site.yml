@@ -3,9 +3,19 @@
 #   Aplicar um módulo:       ansible-playbook site.yml --tags desktop
 #   Tudo:                    ./apply.sh site.yml --tags desktop,system,dev,maquina
 - name: CodeOS
-  hosts: localhost
+  # o computador em uso; a montagem da ISO (iso/construir.sh) passa codeos_alvo=codeos-imagem, com
+  # conexão chroot para a pasta do sistema da imagem
+  hosts: "{{ codeos_alvo | default('localhost') }}"
   gather_facts: true
   pre_tasks:
+    # trava: em modo imagem as tarefas só podem cair dentro da imagem (chroot), nunca no computador
+    - name: Modo imagem só dentro da imagem
+      ansible.builtin.assert:
+        that: ansible_connection is search('chroot')
+        fail_msg: "codeos_imagem=true precisa da conexão chroot para a pasta da imagem (iso/construir.sh)"
+      when: codeos_imagem | bool
+      tags: [always]
+
     # configuração só desta máquina (maquinas/<nome do computador>.yml), quando existe
     - name: Configuração desta máquina
       ansible.builtin.include_vars:

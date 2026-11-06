@@ -1500,6 +1500,9 @@ gtk_module_init (gint *argc, gchar ***argv)
     g_timeout_add (250, encolher_plugin, "pulseaudio-button");
     g_timeout_add (250, encolher_plugin, "xfce4-notification-plugin");
     g_timeout_add (250, encolher_plugin, NULL);
+    /* no gtk_module_init as classes ainda não existem, e sem elas os sinais não existem: cria-as aqui */
+    g_type_class_ref (GTK_TYPE_WIDGET);
+    g_type_class_ref (GTK_TYPE_CONTAINER);
     g_signal_add_emission_hook (g_signal_lookup ("map", GTK_TYPE_WIDGET), 0, ao_mapear, NULL, NULL);
     g_signal_add_emission_hook (g_signal_lookup ("add", GTK_TYPE_CONTAINER), 0, ao_acrescentar, NULL, NULL);
     g_signal_add_emission_hook (g_signal_lookup ("size-allocate", GTK_TYPE_WIDGET), 0, ao_alocar, NULL, NULL);

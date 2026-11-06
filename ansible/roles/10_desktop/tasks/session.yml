@@ -289,6 +289,21 @@
     mode: "0755"
   become: true
 
+# Cada conta grava os próprios fixados em ~/.config/codeos/taskbar-pins; sem ela, vale esta lista.
+- name: Pasta das configurações padrão do CodeOS
+  ansible.builtin.file:
+    path: "{{ desktop_xdg_dir }}/codeos"
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Programas fixados por padrão na barra de tarefas
+  ansible.builtin.copy:
+    content: "{{ desktop_taskbar_default_pins | join('\n') }}\n"
+    dest: "{{ desktop_xdg_dir }}/codeos/taskbar-pins"
+    mode: "0644"
+  become: true
+
 - name: Fonte do módulo "Pin to taskbar" da barra de tarefas
   ansible.builtin.copy:
     src: codeos-taskbar-pins.c
