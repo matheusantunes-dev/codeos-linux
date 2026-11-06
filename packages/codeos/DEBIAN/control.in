@@ -1,0 +1,14 @@
+Package: codeos
+Version: @VERSAO@
+Architecture: all
+Maintainer: Matheus Antunes Reis <matheusantunesreis6@gmail.com>
+Section: misc
+Priority: optional
+Homepage: https://github.com/matheusantunes-dev/codeos-linux
+Depends: ansible-core (>= 2.16), python3, python3-apt, rsync, systemd
+Installed-Size: @TAMANHO@
+Description: CodeOS — configuração do sistema e atualizações
+ Traz a configuração do CodeOS (sessão Xfce no estilo Windows, ajustes do sistema e ferramentas de
+ desenvolvimento) e o repositório APT do CodeOS. A cada versão nova, reaplica a parte do sistema
+ depois que o apt termina (codeos-aplicar.service) e, no próximo login, leva os padrões novos da
+ sessão para cada conta sem apagar o que a pessoa personalizou.

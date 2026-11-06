@@ -1,0 +1,61 @@
+# Monta o pacote codeos e publica o repositório APT assinado no GitHub Pages a cada mudança no main.
+# Precisa, uma vez: o segredo CODEOS_GPG_PRIVATE_KEY (packages/gerar-chave.sh) e o Pages com a fonte
+# "GitHub Actions" (Settings > Pages).
+name: Pacotes e repositório APT
+
+on:
+  push:
+    branches: [main]
+    paths: [ansible/**, assets/**, packages/**, .github/workflows/pacotes.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # a versão do pacote conta os commits
+
+      - name: Ferramentas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ansible-core apt-utils gnupg rsync \
+            gir1.2-rsvg-2.0 python3-gi python3-gi-cairo python3-cairo python3-pil
+
+      - name: Pacote codeos
+        run: ./packages/construir.sh
+
+      - name: Chave de assinatura
+        env:
+          CHAVE: ${{ secrets.CODEOS_GPG_PRIVATE_KEY }}
+        run: |
+          test -n "$CHAVE" || { echo "::error::falta o segredo CODEOS_GPG_PRIVATE_KEY (packages/gerar-chave.sh)"; exit 1; }
+          printf '%s\n' "$CHAVE" | gpg --batch --import
+
+      - name: Repositório APT
+        run: CODEOS_GPG_KEY="CodeOS Archive Signing Key" ./packages/repo.sh
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/build/repo
+
+  publicar:
+    needs: construir
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    steps:
+      - id: pages
+        uses: actions/deploy-pages@v4

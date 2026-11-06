@@ -10,7 +10,7 @@ luz noturna por monitor, USB estável e storage inteligente. A mesma fonte gera 
 | `audit/` | `audit.sh` — Módulo 0, auditoria somente leitura. Relatórios em `audit/reports/` (fora do git). |
 | `backup/` | Módulo 0: `backup.sh` (restic do `/home`) e `timeshift-dest.sh` (Timeshift no HDD). Sem dependência do Ansible. |
 | `ansible/` | Playbook local, um role por módulo (`--tags` por módulo, sempre `--check --diff` antes). |
-| `packages/` | Fontes dos `.deb` `codeos-*` (configuração em nível de sistema: `/etc/xdg`, `/etc/skel`, `/usr/share`). |
+| `packages/` | Pacote `codeos` e repositório APT assinado: as atualizações chegam a quem já instalou ([packages/README.md](packages/README.md)). |
 | `assets/` | Logo, ícones e wallpapers em SVG. |
 | `iso/` | Receita do Cubic e testes em QEMU. |
 | `docs/` | Decisões de arquitetura. |

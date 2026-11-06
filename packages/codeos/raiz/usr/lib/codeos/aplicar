@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# CodeOS — reaplica a configuração do sistema (papéis desktop, system e dev do Ansible) que veio no
+# pacote codeos. Roda como root pelo codeos-aplicar.service:
+#   - logo depois de uma atualização do pacote (o postinst liga o serviço; ele espera o apt terminar);
+#   - no boot, enquanto /var/lib/codeos/pendente existir (uma tentativa que falhou, por exemplo sem rede).
+# É o mesmo modo da montagem da ISO (codeos_imagem=true): nada de conta de pessoa, só o sistema.
+# O que é de cada conta (padrões da barra, atalhos) chega no próximo login por /usr/lib/codeos/sessao.
+#
+# Registro: /var/log/codeos/aplicar.log   Estado: /var/lib/codeos/{pendente,aplicado}
+set -uo pipefail
+export LC_ALL=C.UTF-8 HOME=/root USER=root DEBIAN_FRONTEND=noninteractive
+
+ESTADO=/var/lib/codeos
+LOG=/var/log/codeos/aplicar.log
+ANSIBLE_DIR=/usr/share/codeos/ansible
+
+((EUID == 0)) || { echo "rode como root (sudo systemctl start codeos-aplicar)" >&2; exit 1; }
+install -d -m 755 "$ESTADO" /var/log/codeos
+
+versao=$(dpkg-query -W -f='${Version}' codeos 2>/dev/null || echo desconhecida)
+
+# O serviço é ligado de dentro do postinst, com o apt ainda segurando o dpkg: espera ele soltar.
+# O apt usa trava fcntl (a mesma do lockf do Python); a trava é solta assim que o arquivo fecha.
+python3 -I -c '
+import fcntl
+for f in ("/var/lib/dpkg/lock-frontend", "/var/lib/dpkg/lock"):
+    with open(f, "a") as h:
+        fcntl.lockf(h, fcntl.LOCK_EX)
+'
+
+{
+  printf '\n===== %s — CodeOS %s =====\n' "$(date -Is)" "$versao"
+} >>"$LOG"
+
+cd "$ANSIBLE_DIR" || exit 1
+# a coleção community.general vem dentro do pacote (só o ansible-core é dependência)
+ANSIBLE_COLLECTIONS_PATH="$ANSIBLE_DIR/collections:/usr/share/ansible/collections" \
+ANSIBLE_BECOME_ASK_PASS=False ANSIBLE_CALLBACKS_ENABLED='' ANSIBLE_NOCOLOR=1 \
+  ansible-playbook site.yml -i localhost, -c local \
+    -e codeos_alvo=localhost -e codeos_imagem=true -e codeos_via_pacote=true \
+    -e codeos_home=/root -e codeos_user=root \
+    --tags desktop,system,dev >>"$LOG" 2>&1
+rc=$?
+
+if ((rc == 0)); then
+  rm -f "$ESTADO/pendente"
+  printf '%s\n' "$versao" >"$ESTADO/aplicado"
+  echo "CodeOS $versao aplicado." | tee -a "$LOG"
+else
+  echo "Falhou (código $rc); nova tentativa no próximo boot. Detalhes: $LOG" | tee -a "$LOG" >&2
+fi
+exit "$rc"

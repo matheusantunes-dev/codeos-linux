@@ -117,6 +117,16 @@ passo "Ansible: CodeOS em modo imagem (desktop, system, dev)"
     -e codeos_imagem=true -e ansible_python_interpreter=/usr/bin/python3 \
     -e codeos_home=/root -e codeos_user=root --tags desktop,system,dev )
 
+# o mesmo conteúdo, empacotado: traz a chave e o endereço do repositório APT do CodeOS, então quem
+# instalar esta ISO recebe as versões novas da configuração pelo apt (no chroot o postinst só registra
+# a versão como aplicada, porque ela acabou de ser aplicada acima)
+passo "Pacote codeos (atualizações pelo repositório APT)"
+sudo -u "$SUDO_USER" env CODEOS_SEM_GERAR=1 "$RAIZ/packages/construir.sh"
+DEB=$(ls "$RAIZ"/packages/build/codeos_*_all.deb | sort -V | tail -1)
+cp "$DEB" "$ROOTFS/tmp/codeos.deb"
+no_chroot apt-get -y install /tmp/codeos.deb
+rm -f "$ROOTFS/tmp/codeos.deb"
+
 passo "Tirando a marca do Xubuntu, o snap e o que não é do CodeOS"
 # tudo o que está instalado fica marcado como escolhido, para tirar os metapacotes sem levar junto o resto
 no_chroot sh -c 'apt-mark manual $(dpkg-query -W -f="\${Package}\n") >/dev/null'

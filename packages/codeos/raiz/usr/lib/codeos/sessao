@@ -1,0 +1,31 @@
+#!/bin/sh
+# CodeOS — no login da sessão CodeOS, leva para a sua conta os padrões do Xfce que mudaram numa
+# atualização do pacote codeos, sem apagar o que você personalizou (codeos-xfconf-merge).
+# No primeiro login só registra os padrões atuais; depois, só trabalha quando eles mudam.
+DIR=/etc/xdg/xdg-codeos/xfce4/xfconf/xfce-perchannel-xml
+MESCLA=/usr/local/bin/codeos-xfconf-merge
+ESTADO="${XDG_STATE_HOME:-$HOME/.local/state}/codeos"
+MARCA="$ESTADO/padroes-xfconf.sha256"
+
+[ -x "$MESCLA" ] && [ -d "$DIR" ] || exit 0
+mkdir -p "$ESTADO"
+
+atual=$(cat "$DIR"/*.xml 2>/dev/null | sha256sum | cut -d' ' -f1)
+[ "$atual" = "$(cat "$MARCA" 2>/dev/null)" ] && exit 0
+
+# espera o xfconfd da sessão responder (o autostart roda logo no começo do login)
+i=0
+until xfconf-query -c xfce4-panel -l >/dev/null 2>&1 || [ $i -ge 20 ]; do sleep 0.5; i=$((i + 1)); done
+
+mudou=$("$MESCLA" "$DIR"/*.xml)
+printf '%s\n' "$atual" >"$MARCA"
+[ -n "$mudou" ] || exit 0
+
+# o xfconfd guarda os padrões em memória: reinicia e recarrega a barra, a área de trabalho e as janelas
+pkill -TERM -u "$(id -u)" -x xfconfd
+sleep 1
+xfconf-query -c xfce4-panel -l >/dev/null 2>&1
+setsid xfce4-panel -r >/dev/null 2>&1 &
+setsid xfsettingsd --replace >/dev/null 2>&1 &
+setsid xfwm4 --replace >/dev/null 2>&1 &
+xfdesktop --reload >/dev/null 2>&1 || true

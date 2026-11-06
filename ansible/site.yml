@@ -8,10 +8,12 @@
   hosts: "{{ codeos_alvo | default('localhost') }}"
   gather_facts: true
   pre_tasks:
-    # trava: em modo imagem as tarefas só podem cair dentro da imagem (chroot), nunca no computador
-    - name: Modo imagem só dentro da imagem
+    # trava: em modo imagem as tarefas só podem cair dentro da imagem (chroot), nunca no computador; a
+    # exceção é o pacote codeos (/usr/lib/codeos/aplicar), que reaplica a parte do sistema depois de
+    # cada atualização, como root e sem mexer em nenhuma conta
+    - name: Modo imagem só dentro da imagem (ou pelo pacote codeos)
       ansible.builtin.assert:
-        that: ansible_connection is search('chroot')
+        that: ansible_connection is search('chroot') or codeos_via_pacote | default(false) | bool
         fail_msg: "codeos_imagem=true precisa da conexão chroot para a pasta da imagem (iso/construir.sh)"
       when: codeos_imagem | bool
       tags: [always]
