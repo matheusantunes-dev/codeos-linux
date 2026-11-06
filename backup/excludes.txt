@@ -19,3 +19,6 @@ node_modules
 
 # Rust (o código-fonte fica; só o cache de crates sai)
 .cargo/registry/cache
+
+# Construção da ISO do CodeOS (sistema da imagem, ISO e disco da VM): tudo regenerável por iso/construir.sh
+iso/build
