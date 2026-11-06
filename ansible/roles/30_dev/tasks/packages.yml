@@ -1,0 +1,34 @@
+- name: Ferramentas de desenvolvimento
+  ansible.builtin.apt:
+    name: "{{ dev_packages }}"
+    state: present
+    install_recommends: false
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+
+- name: Comandos com o nome curto (fd, bat)
+  ansible.builtin.file:
+    src: "{{ item.target }}"
+    dest: "/usr/local/bin/{{ item.name }}"
+    state: link
+  become: true
+  loop: "{{ dev_command_links }}"
+
+- name: earlyoom ligado
+  ansible.builtin.systemd_service:
+    name: earlyoom
+    enabled: true
+    state: "{{ omit if codeos_imagem else 'started' }}"
+  become: true
+
+# o mise troca a versão das linguagens ao entrar na pasta de cada projeto (.mise.toml), em todo terminal
+- name: mise ativo no terminal de todo usuário
+  ansible.builtin.blockinfile:
+    path: /etc/bash.bashrc
+    marker: "# {mark} CodeOS: mise (ansible/roles/30_dev)"
+    block: |
+      if command -v mise >/dev/null 2>&1; then
+          eval "$(mise activate bash)"
+      fi
+  become: true

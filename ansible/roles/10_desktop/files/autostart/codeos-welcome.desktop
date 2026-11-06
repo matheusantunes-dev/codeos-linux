@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome to CodeOS
+Comment=Opens at login until "Show at startup" is unchecked
+Exec=codeos-welcome --autostart
+Icon=codeos
+Terminal=false
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-Delay=3

@@ -1,0 +1,15 @@
+#!/bin/bash
+# Super+Shift+T: copiar o texto de um recorte da tela, como o "Text Extractor" do PowerToys. Recorte a
+# área, o texto (OCR do tesseract, português e inglês) vai para a área de transferência, com um aviso.
+set -u
+img=$(mktemp --suffix=.png)
+trap 'rm -f "$img"' EXIT
+xfce4-screenshooter -r -s "$img" >/dev/null 2>&1
+[ -s "$img" ] || exit 0  # recorte cancelado
+texto=$(tesseract "$img" - -l por+eng 2>/dev/null | sed -e 's/[[:space:]]*$//' | sed -e '/./,$!d')
+if [ -z "$texto" ]; then
+    notify-send -i edit-find -a "CodeOS" "Nenhum texto encontrado" "Tente recortar uma área com o texto mais nítido."
+    exit 0
+fi
+printf '%s' "$texto" | xclip -selection clipboard
+notify-send -i edit-copy -a "CodeOS" "Texto copiado" "$(printf '%s' "$texto" | head -c 120)"

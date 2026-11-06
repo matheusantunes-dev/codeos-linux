@@ -1,0 +1,5 @@
+Command=/usr/local/bin/codeos-showdesktop-bar
+UseLabel=0
+Text=
+UpdatePeriod=86400000
+Font=Selawik 10

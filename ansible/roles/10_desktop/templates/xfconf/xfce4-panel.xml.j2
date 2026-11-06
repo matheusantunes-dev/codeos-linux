@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- {{ ansible_managed }}
+     Barra de tarefas minimalista estilo Windows, uma por monitor, cada uma com as janelas do próprio monitor.
+     Principal: menu, janelas, bandeja, volume, notificações, relógio. Secundária: menu, janelas e relógio.
+     Posição "p=8" = canto inferior esquerdo (SNAP_POSITION_SW do xfce4-panel 4.18) com largura de 100%. -->
+<channel name="xfce4-panel" version="1.0">
+  <property name="configver" type="int" value="2"/>
+  <property name="panels" type="array">
+    <value type="int" value="1"/>
+{% if desktop_secondary_output %}
+    <value type="int" value="2"/>
+{% endif %}
+    <property name="dark-mode" type="bool" value="true"/>
+    <property name="panel-1" type="empty">
+      <property name="position" type="string" value="p=8;x=0;y=0"/>
+      <property name="length" type="uint" value="100"/>
+      <property name="position-locked" type="bool" value="true"/>
+      <!-- sempre na tela principal (sem isso fica na primeira saída do xrandr, mesmo não sendo a principal) -->
+      <property name="output-name" type="string" value="Primary"/>
+      <!-- mesma altura da barra do Mint; ícones automáticos = logo de ~32 px, como o do Mint -->
+      <property name="size" type="uint" value="40"/>
+      <property name="icon-size" type="uint" value="0"/>
+      <!-- cinza grafite sólido: translúcida, a barra mudava de cor conforme o papel de parede de cada tela -->
+      <property name="background-style" type="uint" value="1"/>
+      <property name="background-rgba" type="array">
+        <value type="double" value="0.466667"/>
+        <value type="double" value="0.462745"/>
+        <value type="double" value="0.482353"/>
+        <value type="double" value="1.000000"/>
+      </property>
+      <property name="plugin-ids" type="array">
+        <value type="int" value="1"/>
+        <value type="int" value="2"/>
+        <value type="int" value="3"/>
+        <value type="int" value="4"/>
+        <value type="int" value="5"/>
+        <value type="int" value="7"/>
+        <value type="int" value="8"/>
+        <value type="int" value="9"/>
+      </property>
+    </property>
+{% if desktop_secondary_output %}
+    <!-- segunda tela: mesma barra, com menu iniciar, as janelas dela e o relógio -->
+    <property name="panel-2" type="empty">
+      <property name="position" type="string" value="p=8;x=0;y=0"/>
+      <property name="length" type="uint" value="100"/>
+      <property name="position-locked" type="bool" value="true"/>
+      <property name="output-name" type="string" value="{{ desktop_secondary_output }}"/>
+      <property name="size" type="uint" value="40"/>
+      <property name="icon-size" type="uint" value="0"/>
+      <property name="background-style" type="uint" value="1"/>
+      <property name="background-rgba" type="array">
+        <value type="double" value="0.466667"/>
+        <value type="double" value="0.462745"/>
+        <value type="double" value="0.482353"/>
+        <value type="double" value="1.000000"/>
+      </property>
+      <property name="plugin-ids" type="array">
+        <value type="int" value="6"/>
+        <value type="int" value="10"/>
+        <value type="int" value="11"/>
+        <value type="int" value="12"/>
+        <value type="int" value="13"/>
+      </property>
+    </property>
+{% endif %}
+  </property>
+  <property name="plugins" type="empty">
+    <!-- Menu iniciar: logo do CodeOS, busca embaixo como no Windows (6 = o da segunda tela) -->
+{% for menu_id in ([1, 6] if desktop_secondary_output else [1]) %}
+    <property name="plugin-{{ menu_id }}" type="string" value="whiskermenu">
+      <property name="button-icon" type="string" value="codeos-start"/>
+      <property name="show-button-title" type="bool" value="false"/>
+      <property name="position-search-alternate" type="bool" value="true"/>
+      <property name="position-commands-alternate" type="bool" value="true"/>
+      <property name="position-categories-alternate" type="bool" value="true"/>
+      <!-- abre nos favoritos em grade, como o menu iniciar do Windows 11 -->
+      <property name="view-mode" type="int" value="0"/>
+      <property name="default-category" type="int" value="0"/>
+      <property name="menu-width" type="int" value="560"/>
+      <property name="menu-height" type="int" value="560"/>
+      <property name="menu-opacity" type="int" value="96"/>
+      <property name="recent-items-max" type="int" value="12"/>
+      <property name="hover-switch-category" type="bool" value="true"/>
+      <property name="profile-shape" type="int" value="0"/>
+      <property name="favorites" type="array">
+{% for app in desktop_menu_favorites %}
+        <value type="string" value="{{ app }}"/>
+{% endfor %}
+      </property>
+    </property>
+{% endfor %}
+    <!-- Janelas abertas deste monitor: só ícones, agrupadas por app -->
+    <property name="plugin-2" type="string" value="tasklist">
+      <property name="show-labels" type="bool" value="false"/>
+      <property name="grouping" type="bool" value="true"/>
+      <property name="flat-buttons" type="bool" value="true"/>
+      <property name="show-handle" type="bool" value="false"/>
+      <property name="middle-click" type="uint" value="1"/>
+      <property name="include-all-monitors" type="bool" value="false"/>
+    </property>
+    <property name="plugin-3" type="string" value="separator">
+      <property name="expand" type="bool" value="true"/>
+      <property name="style" type="uint" value="0"/>
+    </property>
+    <!-- bandeja: ícones de 22 px numa linha só, cada um num quadrado da altura da barra, com o mesmo
+         espaçamento do volume e das notificações -->
+    <property name="plugin-4" type="string" value="systray">
+      <!-- ícones de 16 px lado a lado, como no Windows (a folga de 4 px vem do CSS e do módulo da barra) -->
+      <property name="icon-size" type="int" value="16"/>
+      <property name="square-icons" type="bool" value="false"/>
+      <property name="single-row" type="bool" value="true"/>
+    </property>
+    <property name="plugin-5" type="string" value="pulseaudio">
+      <property name="enable-keyboard-shortcuts" type="bool" value="true"/>
+      <property name="show-notifications" type="bool" value="true"/>
+    </property>
+    <property name="plugin-7" type="string" value="notification-plugin"/>
+    <!-- Relógio: hora em cima, data embaixo -->
+    <property name="plugin-8" type="string" value="clock">
+      <property name="mode" type="uint" value="2"/>
+      <property name="digital-layout" type="uint" value="1"/>
+      <property name="digital-time-format" type="string" value="%H:%M"/>
+      <property name="digital-date-format" type="string" value="%d/%m/%Y"/>
+      <!-- sem dica: a data já está no relógio e a dica cobria a última linha do calendário -->
+      <property name="tooltip-format" type="string" value=""/>
+    </property>
+    <!-- Mostrar área de trabalho: faixa fina no canto direito, como no Windows (genmon tem a largura
+         do conteúdo; o plugin showdesktop sempre ocupa um quadrado da altura da barra).
+         Configuração em xdg-codeos/xfce4/panel/genmon-9.rc e genmon-13.rc. -->
+    <property name="plugin-9" type="string" value="genmon"/>
+{% if desktop_secondary_output %}
+    <property name="plugin-10" type="string" value="tasklist">
+      <property name="show-labels" type="bool" value="false"/>
+      <property name="grouping" type="bool" value="true"/>
+      <property name="flat-buttons" type="bool" value="true"/>
+      <property name="show-handle" type="bool" value="false"/>
+      <property name="middle-click" type="uint" value="1"/>
+      <property name="include-all-monitors" type="bool" value="false"/>
+    </property>
+    <property name="plugin-11" type="string" value="separator">
+      <property name="expand" type="bool" value="true"/>
+      <property name="style" type="uint" value="0"/>
+    </property>
+    <property name="plugin-12" type="string" value="clock">
+      <property name="mode" type="uint" value="2"/>
+      <property name="digital-layout" type="uint" value="1"/>
+      <property name="digital-time-format" type="string" value="%H:%M"/>
+      <property name="digital-date-format" type="string" value="%d/%m/%Y"/>
+      <!-- sem dica: a data já está no relógio e a dica cobria a última linha do calendário -->
+      <property name="tooltip-format" type="string" value=""/>
+    </property>
+    <property name="plugin-13" type="string" value="genmon"/>
+{% endif %}
+  </property>
+</channel>

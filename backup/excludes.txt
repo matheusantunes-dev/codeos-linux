@@ -1,0 +1,21 @@
+# Exclusões do restic (padrões sem "/" no início valem em qualquer nível).
+# Só entra aqui o que é regenerável. Pastas com CACHEDIR.TAG já são puladas por --exclude-caches.
+
+# Caches gerais
+.cache
+.local/share/Trash
+.var/app/*/cache
+.thumbnails
+
+# Gradle / Android (recriados no próximo build)
+.gradle/caches
+.gradle/daemon
+.gradle/wrapper/dists
+.android/cache
+
+# Node
+.npm/_cacache
+node_modules
+
+# Rust (o código-fonte fica; só o cache de crates sai)
+.cargo/registry/cache

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=Efeitos de janela (picom)
+Comment=Na sessão CodeOS o picom sobe antes da barra (codeos-session); este esconde o autostart do pacote
+Exec=picom
+Hidden=true

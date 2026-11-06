@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- Dois monitores em modos diferentes (noite / dia): luz noturna independente por tela -->
+  <rect x="6" y="6" width="36" height="36" rx="7" fill="{{primary}}"/>
+  <rect x="9" y="14" width="13" height="11" rx="2" fill="{{accent}}"/>
+  <rect x="26" y="14" width="13" height="11" rx="2" fill="{{paper}}"/>
+  <circle cx="15.5" cy="19.5" r="3.5" fill="{{paper}}"/>
+  <circle cx="17" cy="18" r="3" fill="{{accent}}"/>
+  <circle cx="32.5" cy="19.5" r="2.5" fill="{{accent}}"/>
+  <g stroke="{{accent-light}}" stroke-width="2.5" stroke-linecap="round">
+    <line x1="15.5" y1="26" x2="15.5" y2="30"/>
+    <line x1="11.5" y1="31" x2="19.5" y2="31"/>
+    <line x1="32.5" y1="26" x2="32.5" y2="30"/>
+    <line x1="28.5" y1="31" x2="36.5" y2="31"/>
+  </g>
+</svg>

@@ -1,0 +1,22 @@
+- name: Atualizar o initramfs
+  ansible.builtin.command:
+    argv: [update-initramfs, -u]
+  become: true
+  changed_when: true
+
+- name: Recarregar o systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
+
+- name: Recarregar as regras do udev
+  ansible.builtin.command:
+    argv: [udevadm, control, --reload]
+  become: true
+  changed_when: true
+
+- name: Aplicar o sysctl
+  ansible.builtin.command:
+    argv: [sysctl, --system]
+  become: true
+  changed_when: true

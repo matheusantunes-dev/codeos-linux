@@ -1,0 +1,8 @@
+#!/bin/sh
+# Super+V do CodeOS: abre o histórico da área de transferência. Se o Clipman (que guarda o histórico)
+# não estiver rodando, por ter caído ou não ter subido no login, ele é iniciado antes.
+if ! pgrep -u "$(id -u)" -x xfce4-clipman >/dev/null; then
+    setsid xfce4-clipman >/dev/null 2>&1 &
+    sleep 0.5
+fi
+exec xfce4-clipman-history

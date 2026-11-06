@@ -1,0 +1,6 @@
+#!/bin/bash
+# CodeOS: os plugins que rodam fora da barra (bandeja, volume, notificações...) abrem com o módulo da barra,
+# que deixa os ícones do tamanho do Windows. O wrapper-2.0 original foi desviado com dpkg-divert para
+# wrapper-2.0.real; o módulo se tira do GTK_MODULES, então os programas abertos pelo menu não o herdam.
+export GTK_MODULES="${GTK_MODULES:+$GTK_MODULES:}/usr/local/lib/codeos/libcodeos-taskbar-pins.so"
+exec -a wrapper-2.0 "$0.real" "$@"

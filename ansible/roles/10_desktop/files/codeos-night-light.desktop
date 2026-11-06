@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Night light
+Name[pt]=Luz noturna
+Name[pt_BR]=Luz noturna
+Comment=Warmer colors at night, set per display
+Comment[pt_BR]=Cores mais quentes à noite, ajustadas em cada monitor
+Exec=codeos-night-light
+Icon=night-light
+Categories=Settings;DesktopSettings;X-XFCE-SettingsDialog;X-XFCE-HardwareSettings;
+OnlyShowIn=XFCE;

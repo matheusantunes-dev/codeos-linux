@@ -1,0 +1,8 @@
+- name: Repositórios oficiais (GitHub CLI, mise, VS Code)
+  ansible.builtin.import_tasks: repos.yml
+
+- name: Ferramentas de desenvolvimento
+  ansible.builtin.import_tasks: packages.yml
+
+- name: Containers (Docker sob demanda, Podman, Distrobox)
+  ansible.builtin.import_tasks: containers.yml

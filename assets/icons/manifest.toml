@@ -1,0 +1,103 @@
+# Tema de ícones do CodeOS: paleta e lista de ícones.
+# Depois de editar, rode: python3 assets/icons/build.py
+
+[theme]
+name = "CodeOS"
+comment = "Ícones do CodeOS"
+inherits = "Papirus,hicolor"
+
+[palette]
+primary = "#1E54BC"
+primary-dark = "#17439A"
+primary-light = "#3A6FD2"
+glyph = "#0E2A66"
+accent = "#05C0DF"
+accent-light = "#5FD8EC"
+paper = "#FFFFFF"
+symbolic = "#2E3436"
+
+# ── ícones desenhados um a um ──
+
+[[icon]]
+src = "src/apps/codeos.svg"
+context = "apps"
+name = "codeos"
+# start-here e o do Whisker Menu fazem do logo o botão do menu iniciar
+aliases = ["distributor-logo", "distributor-logo-codeos", "start-here", "org.xfce.panel.whiskermenu"]
+
+[[icon]]
+src = "src/apps/codeos-start.svg"
+context = "apps"
+name = "codeos-start"
+# só o botão do menu na barra; o logo sem margem fica do tamanho do logo do Mint
+
+[[icon]]
+src = "src/apps/utilities-terminal.svg"
+context = "apps"
+name = "utilities-terminal"
+aliases = ["terminal", "org.xfce.terminal", "xfce4-terminal"]
+
+[[icon]]
+src = "src/apps/codeos-nightlight.svg"
+context = "apps"
+name = "codeos-nightlight"
+
+[[icon]]
+src = "src/status/codeos-dual-audio-symbolic.svg"
+context = "status"
+name = "codeos-dual-audio-symbolic"
+symbolic = true
+# o áudio duplo é um item do Blueman (menu do dispositivo e da bandeja), não um app próprio
+
+# ── pastas: modelo + glifo (glyph vazio = pasta genérica) ──
+
+[[folder]]
+name = "folder"
+glyph = ""
+# o gerenciador de arquivos é a pasta, como no Windows (sem isto o Thunar caía no arquivo do Papirus)
+aliases = ["org.xfce.thunar", "thunar", "system-file-manager"]
+
+[[folder]]
+name = "folder-projects"
+glyph = "projects"
+aliases = ["folder-development", "folder-code"]
+
+[[folder]]
+name = "folder-download"
+glyph = "download"
+aliases = ["folder-downloads"]
+
+# ── em PNG (um arquivo por tamanho em src/raster/<contexto>/<tamanho>/) ──
+
+# Lixeira e discos do Mint-L (CC BY-SA 4.0) recoloridos; gerados por recolor_icons.py, créditos em CREDITS.md
+[[raster]]
+context = "places"
+name = "user-trash"
+
+[[raster]]
+context = "places"
+name = "user-trash-full"
+
+# Disco e pendrive em metal escovado aço-ciano (tom diferente da lixeira)
+[[raster]]
+context = "devices"
+name = "drive-harddisk"
+aliases = ["drive-harddisk-system", "drive-harddisk-solidstate", "drive-harddisk-usb", "drive-harddisk-ieee1394", "harddrive", "gnome-dev-harddisk", "gtk-harddisk"]
+
+[[raster]]
+context = "devices"
+name = "drive-removable-media-usb"
+aliases = ["drive-removable-media-usb-pendrive", "drive-removable-media", "media-removable", "gnome-dev-removable-usb"]
+
+[[icon]]
+src = "src/actions/document-open-recent.svg"
+context = "actions"
+name = "document-open-recent"
+# "Recently Used" do menu iniciar: o do Papirus é cinza-escuro e sumia no menu escuro
+
+[[icon]]
+src = "src/apps/night-light.svg"
+context = "apps"
+name = "night-light"
+aliases = ["codeos-night-light"]
+# janela "Luz noturna" (codeos-night-light); sem ícone com esse nome aparecia o de imagem quebrada

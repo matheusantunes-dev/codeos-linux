@@ -1,0 +1,1 @@
+matheusdev ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop anydesk, /usr/bin/systemctl start anydesk

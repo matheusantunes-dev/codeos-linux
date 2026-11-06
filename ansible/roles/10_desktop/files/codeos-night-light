@@ -1,0 +1,286 @@
+#!/usr/bin/env python3
+"""Luz noturna do CodeOS, com temperatura própria em cada monitor.
+
+  codeos-night-light            janela de configuração
+  codeos-night-light --daemon   o mesmo que codeos-night-light-daemon, o vigia em C (autostart da
+                                sessão) que aplica a cor em cada monitor; daemon() abaixo é a
+                                referência da regra que ele segue
+
+A cor é aplicada na curva de gamma de cada CRTC (RandR), então cada tela tem a sua. A configuração
+fica em ~/.config/codeos/night-light.json; o vigia relê o arquivo quando ele muda.
+"""
+import json
+import locale
+import math
+import os
+import signal
+import sys
+import time
+from datetime import datetime
+
+CONFIG = os.path.expanduser("~/.config/codeos/night-light.json")
+DIA = 6500           # temperatura sem filtro
+MIN, MAX = 2500, 6000
+TRANSICAO_MIN = 30   # minutos de transição no começo e no fim do horário
+PADRAO = {"mode": "schedule", "start": "19:00", "end": "06:30", "monitors": {}, "default": 4000}
+
+
+def ler_config():
+    try:
+        with open(CONFIG) as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        cfg = {}
+    return {**PADRAO, **cfg}
+
+
+def salvar_config(cfg):
+    os.makedirs(os.path.dirname(CONFIG), exist_ok=True)
+    tmp = CONFIG + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(cfg, f, indent=1)
+    os.replace(tmp, CONFIG)
+
+
+def monitor_cfg(cfg, nome):
+    m = cfg["monitors"].get(nome, {})
+    return m.get("enabled", True), int(m.get("temperature", cfg["default"]))
+
+
+# ── cor ──────────────────────────────────────────────────────────────────────────────────────
+
+def rgb(kelvin):
+    """Multiplicadores R, G, B (0–1) do branco numa temperatura, normalizados para 6500 K = branco."""
+    def bruto(k):
+        t = k / 100
+        r = 255 if t <= 66 else 329.698727446 * (t - 60) ** -0.1332047592
+        g = (99.4708025861 * math.log(t) - 161.1195681661) if t <= 66 else 288.1221695283 * (t - 60) ** -0.0755148492
+        b = 255 if t >= 66 else (0 if t <= 19 else 138.5177312231 * math.log(t - 10) - 305.0447927307)
+        return [min(255.0, max(0.0, c)) for c in (r, g, b)]
+    alvo, ref = bruto(kelvin), bruto(DIA)
+    return [min(1.0, a / r) for a, r in zip(alvo, ref)]
+
+
+def minutos(hhmm):
+    h, m = hhmm.split(":")
+    return int(h) * 60 + int(m)
+
+
+def intensidade(cfg, agora=None):
+    """0 = dia (sem filtro), 1 = noite (temperatura escolhida), com transição suave."""
+    if cfg.get("preview_until", 0) > time.time():
+        return 1.0  # a janela está mostrando a cor enquanto você ajusta
+    if cfg["mode"] == "off":
+        return 0.0
+    if cfg["mode"] == "always":
+        return 1.0
+    agora = agora or datetime.now()
+    t = agora.hour * 60 + agora.minute + agora.second / 60
+    ini, fim = minutos(cfg["start"]), minutos(cfg["end"])
+    dur = (fim - ini) % 1440
+    desde = (t - ini) % 1440
+    if desde >= dur:
+        return 0.0
+    entrada = min(1.0, desde / TRANSICAO_MIN)
+    saida = min(1.0, (dur - desde) / TRANSICAO_MIN)
+    return min(entrada, saida)
+
+
+# ── RandR ────────────────────────────────────────────────────────────────────────────────────
+
+def saidas(display):
+    """{nome da saída: crtc} das saídas conectadas e ligadas."""
+    from Xlib.ext import randr
+    raiz = display.screen().root
+    rec = randr.get_screen_resources_current(raiz)
+    res = {}
+    for out in rec.outputs:
+        info = randr.get_output_info(raiz, out, rec.config_timestamp)
+        if info.connection == randr.Connected and info.crtc:
+            res[info.name] = info.crtc
+    return res
+
+
+def principal(display):
+    from Xlib.ext import randr
+    raiz = display.screen().root
+    out = randr.get_output_primary(raiz).output
+    if not out:
+        return None
+    rec = randr.get_screen_resources_current(raiz)
+    return randr.get_output_info(raiz, out, rec.config_timestamp).name
+
+
+def aplicar(display, crtc, kelvin):
+    from Xlib.ext import randr
+    raiz = display.screen().root
+    n = randr.get_crtc_gamma_size(raiz, crtc).size
+    mult = rgb(kelvin)
+    rampas = [[min(65535, int(i / (n - 1) * 65535 * m)) for i in range(n)] for m in mult]
+    randr.set_crtc_gamma(raiz, crtc, n, *rampas)
+    display.sync()
+
+
+def rampa_atual(display, crtc):
+    from Xlib.ext import randr
+    g = randr.get_crtc_gamma(display.screen().root, crtc)
+    return g.red[-1], g.green[-1], g.blue[-1]
+
+
+def daemon():
+    from Xlib import display as xdisplay
+    d = xdisplay.Display()
+    aplicado = {}  # crtc → (kelvin, topo esperado da rampa)
+
+    def limpar(*_):
+        for nome, crtc in saidas(d).items():
+            aplicar(d, crtc, DIA)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, limpar)
+    signal.signal(signal.SIGINT, limpar)
+
+    mtime, cfg, proximo = None, ler_config(), 0
+    while True:
+        try:
+            m = os.path.getmtime(CONFIG)
+        except OSError:
+            m = None
+        if m != mtime:
+            mtime, cfg, proximo = m, ler_config(), 0
+        if time.time() >= proximo or cfg.get("preview_until", 0) > time.time() - 2:
+            f = intensidade(cfg)
+            for nome, crtc in saidas(d).items():
+                ligado, alvo = monitor_cfg(cfg, nome)
+                kelvin = round(DIA - f * (DIA - alvo)) if ligado else DIA
+                topo = tuple(min(65535, int(65535 * c)) for c in rgb(kelvin))
+                # reaplica também quando a curva foi trocada por fora (mudança de modo do monitor)
+                if aplicado.get(crtc) != (kelvin, topo) or rampa_atual(d, crtc) != topo:
+                    aplicar(d, crtc, kelvin)
+                    aplicado[crtc] = (kelvin, topo)
+            proximo = time.time() + 30
+        time.sleep(1)
+
+
+# ── janela ───────────────────────────────────────────────────────────────────────────────────
+
+TEXTOS = {
+    "pt": {"titulo": "Luz noturna", "quando": "Quando ligar", "off": "Desligada", "always": "Sempre ligada",
+           "schedule": "Programada", "das": "das", "as": "às", "monitores": "Monitores",
+           "quente": "Mais quente", "frio": "Mais frio", "fechar": "Fechar", "principal": "principal"},
+    "en": {"titulo": "Night light", "quando": "When to turn on", "off": "Off", "always": "Always on",
+           "schedule": "Scheduled", "das": "from", "as": "to", "monitores": "Displays",
+           "quente": "Warmer", "frio": "Cooler", "fechar": "Close", "principal": "primary"},
+}
+
+
+def janela():
+    import gi
+    gi.require_version("Gtk", "3.0")
+    from gi.repository import Gtk
+    from Xlib import display as xdisplay
+
+    locale.setlocale(locale.LC_ALL, "")
+    idioma = locale.getlocale(locale.LC_MESSAGES)[0] or ""
+    tx = TEXTOS["pt" if idioma.startswith("pt") else "en"]
+    cfg = ler_config()
+
+    win = Gtk.Window(title=tx["titulo"], icon_name="night-light")
+    win.set_default_size(460, -1)
+    win.set_position(Gtk.WindowPosition.CENTER)
+    win.connect("destroy", Gtk.main_quit)
+    caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14, margin=20)
+    win.add(caixa)
+
+    def titulo(texto):
+        rot = Gtk.Label(xalign=0)
+        rot.set_markup(f"<b>{texto}</b>")
+        return rot
+
+    def salvar(*_):
+        salvar_config(cfg)
+
+    # quando
+    caixa.pack_start(titulo(tx["quando"]), False, False, 0)
+    modo = Gtk.ComboBoxText()
+    for chave in ("off", "always", "schedule"):
+        modo.append(chave, tx[chave])
+    modo.set_active_id(cfg["mode"])
+    horario = Gtk.Box(spacing=8)
+
+    def hora(valor, chave):
+        e = Gtk.Entry(text=valor, width_chars=5, max_length=5)
+
+        def mudou(w):
+            v = w.get_text()
+            try:
+                h, m = v.split(":")
+                if 0 <= int(h) < 24 and 0 <= int(m) < 60:
+                    cfg[chave] = f"{int(h):02d}:{int(m):02d}"
+                    salvar()
+            except ValueError:
+                pass
+        e.connect("changed", mudou)
+        return e
+
+    for w in (Gtk.Label(label=tx["das"]), hora(cfg["start"], "start"), Gtk.Label(label=tx["as"]), hora(cfg["end"], "end")):
+        horario.pack_start(w, False, False, 0)
+
+    def modo_mudou(c):
+        cfg["mode"] = c.get_active_id()
+        horario.set_sensitive(cfg["mode"] == "schedule")
+        salvar()
+    modo.connect("changed", modo_mudou)
+    linha = Gtk.Box(spacing=12)
+    linha.pack_start(modo, False, False, 0)
+    linha.pack_start(horario, False, False, 0)
+    horario.set_sensitive(cfg["mode"] == "schedule")
+    caixa.pack_start(linha, False, False, 0)
+
+    # monitores
+    caixa.pack_start(titulo(tx["monitores"]), False, False, 0)
+    xd = xdisplay.Display()
+    prim = principal(xd)
+    for nome in saidas(xd):
+        primario = nome == prim
+        ligado, temp = monitor_cfg(cfg, nome)
+        quadro = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        topo = Gtk.Box(spacing=12)
+        rotulo = Gtk.Label(xalign=0)
+        rotulo.set_markup(nome + (f"  <small>({tx['principal']})</small>" if primario else ""))
+        chave = Gtk.Switch(active=ligado, valign=Gtk.Align.CENTER)
+        topo.pack_start(rotulo, True, True, 0)
+        topo.pack_end(chave, False, False, 0)
+        ajuste = Gtk.Adjustment(value=temp, lower=MIN, upper=MAX, step_increment=100, page_increment=500)
+        escala = Gtk.Scale(orientation=Gtk.Orientation.HORIZONTAL, adjustment=ajuste, draw_value=False,
+                           sensitive=ligado)
+        escala.add_mark(MIN, Gtk.PositionType.BOTTOM, tx["quente"])
+        escala.add_mark(MAX, Gtk.PositionType.BOTTOM, tx["frio"])
+
+        def ligar(sw, _p, nome=nome, escala=escala):
+            cfg["monitors"].setdefault(nome, {})["enabled"] = sw.get_active()
+            escala.set_sensitive(sw.get_active())
+            salvar()
+
+        def temperatura(adj, nome=nome):
+            cfg["monitors"].setdefault(nome, {})["temperature"] = int(round(adj.get_value() / 100) * 100)
+            cfg["preview_until"] = time.time() + 4  # mostra a cor agora, mesmo fora do horário
+            salvar()
+        chave.connect("notify::active", ligar)
+        ajuste.connect("value-changed", temperatura)
+        quadro.pack_start(topo, False, False, 0)
+        quadro.pack_start(escala, False, False, 0)
+        caixa.pack_start(quadro, False, False, 0)
+
+    fechar = Gtk.Button(label=tx["fechar"], halign=Gtk.Align.END)
+    fechar.connect("clicked", lambda _b: win.destroy())
+    caixa.pack_start(fechar, False, False, 0)
+
+    win.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    if "--daemon" in sys.argv:
+        os.execv("/usr/local/bin/codeos-night-light-daemon", ["codeos-night-light-daemon"])
+    janela()

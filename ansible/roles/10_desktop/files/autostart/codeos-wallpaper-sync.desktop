@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Papel de parede em todas as telas
+Comment=Repete em todas as telas o papel de parede escolhido numa delas (chave em "Papel de parede")
+Exec=codeos-wallpaper-sync
+OnlyShowIn=XFCE;
+NoDisplay=true

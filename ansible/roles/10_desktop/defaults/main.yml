@@ -1,0 +1,227 @@
+# Pacotes do desktop (sem "recommends", para não puxar o xfce4-goodies inteiro).
+desktop_packages:
+  - xfce4
+  - xfce4-whiskermenu-plugin
+  - xfce4-pulseaudio-plugin
+  - xfce4-power-manager
+  - xfce4-power-manager-plugins   # ícone de energia na barra
+  - xfce4-notifyd
+  - xfce4-terminal
+  - xfce4-taskmanager
+  - xfce4-screenshooter
+  - thunar-archive-plugin
+  - thunar-volman
+  - xfce4-clipman           # histórico da área de transferência (Super+V)
+  - picom                   # compositor: sombras, cantos arredondados e fade nas janelas
+  - xfce4-panel-profiles    # salvar e trocar layouts da barra
+  - xfce4-genmon-plugin     # faixa "mostrar área de trabalho" no canto da barra
+  - wmctrl                  # Alt+F4 e "mostrar área de trabalho"
+  - x11-utils               # xprop (Alt+F4)
+  - xcape                   # Super sozinha abre o menu sem quebrar Super+D, Super+←...
+  - python3-xlib            # luz noturna: curva de cor de cada monitor (RandR)
+  - build-essential         # gcc e make: compilam os módulos e vigias do CodeOS (o Xubuntu não traz)
+  - pkg-config
+  - libgtk-3-dev            # compila o módulo que põe "Apply to all displays" no seletor de papel de parede
+  - libwnck-3-dev           # compila o módulo "Pin to taskbar" da barra de tarefas
+  - libxcomposite-dev       # prévia das janelas ao passar o mouse na barra (mesmo módulo)
+  - libjson-glib-dev        # compila o vigia da luz noturna
+  - libxfconf-0-dev         # compila o vigia do papel de parede
+  - libxrandr-dev           # os dois vigias (cor e tela principal de cada monitor)
+  - mugshot                 # foto e dados do usuário (aparecem no menu)
+  - catfish                 # busca de arquivos
+  - tumbler                 # miniaturas (papéis de parede, fotos e vídeos no Thunar)
+  - mousepad                # editor de texto (no lugar do xed do Mint)
+  - ristretto               # visualizador de imagens (no lugar do xviewer)
+  - atril                   # leitor de PDF (no lugar do xreader)
+  - slick-greeter           # tela de login do CodeOS (o Xubuntu traz o lightdm-gtk-greeter)
+  - light-locker            # bloqueio de tela pela própria tela de login (Super+L, suspender, trocar usuário)
+  - flatpak                 # loja Flathub (Bottles, Zed na tela de boas-vindas), como no Mint, Pop!_OS e Zorin
+  - wsdd                    # descoberta de computadores Windows/Samba na rede (Thunar > Rede)
+  - papirus-icon-theme      # o tema CodeOS herda dele
+  - fonts-jetbrains-mono
+  - fonts-liberation        # mesmas medidas de Arial, Times New Roman e Courier New
+  - fonts-crosextra-carlito # mesmas medidas da Calibri (documentos do Word abrem sem desmontar)
+  - fonts-crosextra-caladea # mesmas medidas da Cambria
+  - p7zip-full              # .7z no botão direito do Thunar
+  - unrar                   # .rar (do multiverse, como no ubuntu-restricted-extras)
+  - wine                    # programas do Windows (.exe e .msi abrem com dois cliques)
+  - gpick                   # seletor de cor (Super+Shift+C)
+  - tesseract-ocr           # copiar texto da tela (Super+Shift+T), inglês
+  - tesseract-ocr-por       # e português
+  - libnotify-bin           # avisos "Cor copiada" / "Texto copiado"
+  - xclip
+  - sassc                   # compila o CSS do tema Fluent
+
+# Tema Fluent (GPL-3), versão fixada e conferida por checksum.
+desktop_fluent_version: "2025-04-17"
+desktop_fluent_sha256: bedc51e07ca4edaeb3bdd50e9e2a27c10f1b049f460b10e3b5668d11ff2b03cd
+desktop_gtk_theme: Fluent-round-Light
+desktop_gtk_theme_dark: Fluent-round-Dark
+
+# Selawik (OFL): métricas do Segoe UI, publicada pela própria Microsoft.
+desktop_selawik_url: https://github.com/microsoft/Selawik/releases/download/1.01/Selawik_Release.zip
+desktop_selawik_sha256: 3f62c51e05e3b5a1e6241cf92a371f0be2ea1183aa87b30718bbd40832a8d423
+
+desktop_icon_theme: CodeOS
+desktop_font: Selawik 10
+desktop_title_font: Selawik Semibold 10
+desktop_mono_font: JetBrains Mono 10
+
+# Defaults da sessão "CodeOS": o Xsession do Ubuntu põe /etc/xdg/xdg-<sessão> na frente do
+# XDG_CONFIG_DIRS, então nada aqui sobrescreve arquivo de pacote.
+desktop_xdg_dir: /etc/xdg/xdg-codeos
+# programas fixados na barra de quem ainda não fixou nada (como o Explorador e o navegador no Windows)
+desktop_taskbar_default_pins:
+  - /usr/share/applications/thunar.desktop
+  - /usr/share/applications/firefox.desktop
+  - /usr/share/applications/xfce4-terminal.desktop
+
+# Papéis de parede (assets/wallpapers, créditos em CREDITS.md) e o padrão da sessão.
+desktop_wallpaper_dir: /usr/share/backgrounds/codeos
+desktop_wallpaper_default: codeos-01-lofoten-reine.jpg
+# Saídas de vídeo que recebem o papel de parede padrão (nomes do xrandr; "0"/"1" quando não há nome, como no Xephyr).
+desktop_wallpaper_monitors: [HDMI-1, HDMI-2, VGA-1, LVDS-1, eDP-1, DP-1, DP-2, Virtual-1, screen, "0", "1"]
+
+# Favoritos do menu iniciar (os que não estiverem instalados o menu ignora).
+desktop_menu_favorites:
+  - firefox.desktop
+  - thunar.desktop
+  - xfce4-terminal.desktop
+  - com.microsoft.VSCode.desktop
+  - dev.zed.Zed.desktop
+  - com.anthropic.Claude.desktop
+  - xfce-settings-manager.desktop
+
+# plugins da barra que rodam dentro do processo dela (tasks/session.yml). Ficam fora a bandeja (systray),
+# que dentro da barra não recebe os ícones XEmbed, e o menu iniciar (whiskermenu), que guarda a
+# configuração numa variável única do programa: com um menu por tela no mesmo processo, um sobrescrevia
+# o outro e o menu da tela principal se perdia.
+desktop_panel_internal_plugins: [pulseaudio, notification-plugin, genmon]
+desktop_panel_external_plugins: [whiskermenu]
+
+# wrapper dos plugins de fora da barra (desviado para carregar o módulo da barra; tasks/session.yml)
+desktop_panel_wrapper: /usr/lib/x86_64-linux-gnu/xfce4/panel/wrapper-2.0
+
+# Arquivos de identidade do CodeOS (tasks/identity.yml), no lugar dos dos pacotes.
+desktop_identity_files:
+  - { src: os-release.j2, dest: /usr/lib/os-release }
+  - { src: lsb-release.j2, dest: /etc/lsb-release }
+  - { src: issue.j2, dest: /etc/issue }
+  - { src: issue.net.j2, dest: /etc/issue.net }
+  - { src: codeos-about.j2, dest: /usr/bin/xfce4-about, mode: "0755" }
+  - { src: firefox-distribution.ini.j2, dest: /usr/lib/firefox/distribution/distribution.ini }
+
+# Tela de login (slick-greeter) e sessão padrão.
+desktop_session: codeos
+desktop_greeter_logo: /usr/share/pixmaps/codeos-greeter-logo.png
+
+# Cinnamon removido depois que a sessão CodeOS está instalada (tasks/cinnamon.yml). Ficam o
+# mintsystem e o mint-info-cinnamon: o Firefox do Mint depende deles (pré-dependência
+# do ubuntu-system-adjustments) e eles somem junto com o Mint na reinstalação pela ISO.
+desktop_cinnamon_packages:
+  - mint-meta-cinnamon
+  - cinnamon
+  - cinnamon-common
+  - cinnamon-control-center
+  - cinnamon-control-center-data
+  - cinnamon-control-center-dbg
+  - cinnamon-dbg
+  - cinnamon-desktop-data
+  - cinnamon-l10n
+  - cinnamon-screensaver       # o bloqueio do CodeOS é o light-locker
+  - cinnamon-session
+  - cinnamon-session-common
+  - cinnamon-settings-daemon
+  - libcinnamon-control-center1
+  - libcinnamon-desktop4
+  - libcinnamon-desktop-dbg
+  - libcinnamon-menu-3-0
+  - libcinnamon-menu-3-0-dbg
+  - gir1.2-cinnamondesktop-3.0
+  - muffin
+  - muffin-common
+  - muffin-dbg
+  - libmuffin0
+  - gir1.2-meta-muffin-0.0
+  - cjs
+  - libcjs0
+  - libcjs-dbg
+  - nemo                       # o gerenciador de arquivos do CodeOS é o Thunar
+  - nemo-data
+  - nemo-dbg
+  - nemo-emblems
+  - nemo-fileroller
+  - nemo-preview
+  - nemo-share
+  - python-nemo
+  - gir1.2-nemo-3.0
+  - libnemo-extension1
+  - xviewer                    # dependia do Cinnamon; o CodeOS usa o Ristretto
+  - xviewer-plugins
+  - xviewer-dbg
+  - gir1.2-xviewer-3.0
+  - gir1.2-cmenu-3.0
+
+desktop_mint_artwork_packages:
+  - mint-meta-core
+  - mint-artwork
+  - mint-themes
+  - mint-l-theme
+  - mint-l-icons
+  - mint-x-icons
+  - mint-y-icons
+  - mint-backgrounds-wallpapers
+
+# Métodos de entrada para chinês, japonês, coreano...: o ibus rodava em toda sessão (~60 MB). Português e
+# inglês (acentos, ç, teclas mortas) funcionam igual sem ele, pelo próprio GTK e pelo X.
+desktop_ibus_packages: [ibus, ibus-data, ibus-gtk, ibus-gtk3, ibus-gtk4]
+
+# Autostarts do Mint/Cinnamon que não fazem sentido na sessão CodeOS (ficam escondidos só nela).
+desktop_hidden_autostarts:
+  - mintupdate.desktop
+  - mintreport.desktop
+  - mintwelcome.desktop
+  - nvidia-prime.desktop
+  - sticky.desktop
+  - warpinator-autostart.desktop
+  - touchegg.desktop
+  - xapp-sn-watcher.desktop
+  - org.gnome.Evolution-alarm-notify.desktop
+
+# Apps do Mint escondidos do menu e das Configurações na sessão CodeOS (some de vez na ISO).
+# O Xsession põe /usr/share/codeos na frente do XDG_DATA_DIRS só nessa sessão, então um .desktop
+# com o mesmo nome e Hidden=true ali tem prioridade sobre o do pacote.
+desktop_hidden_apps:
+  - mintbackup.desktop
+  - mintdrivers.desktop
+  - mintinstall.desktop
+  - mintinstall-kde.desktop
+  - mintinstall-fp-handler.desktop
+  - mintlocale.desktop
+  - mintlocale-im.desktop
+  - mintreport.desktop
+  - mintsources.desktop
+  - mintstick.desktop
+  - mintstick-format.desktop
+  - mintsysadm.desktop
+  - mintupdate.desktop
+  - mintwelcome.desktop
+  - lightdm-settings.desktop
+  - captain.desktop
+  - nemo.desktop
+  - nemo-autorun-software.desktop
+  - org.x.editor.desktop
+  - xreader.desktop
+  - xviewer.desktop
+  - pix.desktop
+  - hypnotix.desktop
+  - sticky.desktop
+  - thingy.desktop
+  - bulky.desktop
+  - org.x.Warpinator.desktop
+  - webapp-manager.desktop
+  - fingwit.desktop
+  - org.gnome.Screenshot.desktop      # duplicava o "Screenshot" do Xfce
+
+# Segunda barra de tarefas (nome da saída do xrandr, ex.: VGA-1). Vazio = só a barra da tela principal.
+desktop_secondary_output: ""

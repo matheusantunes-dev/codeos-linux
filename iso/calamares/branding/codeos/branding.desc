@@ -1,0 +1,35 @@
+# Marca do CodeOS no instalador (Calamares)
+---
+componentName: codeos
+welcomeStyleCalamares: false
+welcomeExpandingLogo: false
+windowExpanding: normal
+windowSize: 960px,640px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+
+strings:
+    productName:         CodeOS
+    shortProductName:    CodeOS
+    version:             1.0
+    shortVersion:        1.0
+    versionedName:       CodeOS 1.0
+    shortVersionedName:  CodeOS 1.0
+    bootloaderEntryName: Ubuntu
+    productUrl:          https://github.com/matheusantunes-dev
+    supportUrl:          https://github.com/matheusantunes-dev
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "icon.png"
+    productWelcome:      "welcome.png"
+
+slideshow:               "show.qml"
+slideshowAPI:            1
+
+style:
+   SidebarBackground:        "#0A1B3C"
+   SidebarText:              "#E6EDF7"
+   SidebarTextCurrent:       "#05C0DF"
+   SidebarBackgroundCurrent: "#13295A"

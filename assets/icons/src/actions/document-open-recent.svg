@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- recentes: relógio na paleta do CodeOS, legível no menu escuro e em janelas claras -->
+  <circle cx="24" cy="24" r="19" fill="{{primary-dark}}"/>
+  <circle cx="24" cy="24" r="16" fill="{{primary-light}}"/>
+  <circle cx="24" cy="24" r="13.5" fill="{{paper}}"/>
+  <g stroke="{{glyph}}" stroke-linecap="round" fill="none">
+    <path d="M24 15.5 V24 L30 27.5" stroke-width="3"/>
+  </g>
+  <g fill="{{primary}}">
+    <circle cx="24" cy="13" r="1.3"/><circle cx="35" cy="24" r="1.3"/>
+    <circle cx="24" cy="35" r="1.3"/><circle cx="13" cy="24" r="1.3"/>
+  </g>
+  <circle cx="24" cy="24" r="2" fill="{{accent}}"/>
+</svg>

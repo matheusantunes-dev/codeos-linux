@@ -1,0 +1,47 @@
+- name: USB sem economia de energia nos hubs e no adaptador Bluetooth
+  ansible.builtin.template:
+    src: 80-codeos-usb.rules.j2
+    dest: /etc/udev/rules.d/80-codeos-usb.rules
+    mode: "0644"
+  become: true
+  notify: Recarregar as regras do udev
+
+- name: Vigia do Bluetooth (reconecta o adaptador quando ele trava)
+  ansible.builtin.copy:
+    src: codeos-bt-watchdog
+    dest: /usr/local/sbin/codeos-bt-watchdog
+    mode: "0755"
+  become: true
+
+- name: Serviço do vigia do Bluetooth
+  ansible.builtin.copy:
+    src: codeos-bt-watchdog.service
+    dest: /etc/systemd/system/codeos-bt-watchdog.service
+    mode: "0644"
+  become: true
+  notify: Recarregar o systemd
+
+- name: Ligar o vigia do Bluetooth
+  ansible.builtin.systemd_service:
+    name: codeos-bt-watchdog.service
+    enabled: true
+    state: "{{ omit if codeos_imagem else 'started' }}"
+    daemon_reload: true
+  become: true
+
+- name: Pasta do complemento do wol-fix
+  ansible.builtin.file:
+    path: /etc/systemd/system/wol-fix.service.d
+    state: directory
+    mode: "0755"
+  become: true
+  when: "'/etc/systemd/system/wol-fix.service' is file"
+
+- name: Wake-on-LAN na placa certa ({{ system_wol_interface }}), depois que ela aparece
+  ansible.builtin.template:
+    src: wol-fix.conf.j2
+    dest: /etc/systemd/system/wol-fix.service.d/10-codeos.conf
+    mode: "0644"
+  become: true
+  when: "'/etc/systemd/system/wol-fix.service' is file"
+  notify: Recarregar o systemd

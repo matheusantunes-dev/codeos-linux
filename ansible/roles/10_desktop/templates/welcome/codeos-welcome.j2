@@ -1,0 +1,607 @@
+#!/usr/bin/env python3
+"""Welcome to CodeOS: a tela de boas-vindas do sistema.
+
+Abre no login (autostart do sistema, /etc/xdg/xdg-codeos/autostart/codeos-welcome.desktop) até a pessoa
+desmarcar "Show at startup", e pelo menu a qualquer hora. Tem os atalhos principais, tema claro ou
+escuro, papel de parede e extras opcionais. Os extras são instalados pelo codeos-welcome-helper, com a
+senha de administrador pedida pela janela padrão do sistema (pkexec).
+"""
+import locale
+import os
+import subprocess
+import sys
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gio, GLib, Gtk  # noqa: E402
+
+NOME = "{{ codeos_name }}"
+VERSAO = "{{ codeos_version }}"
+CRIADOR = "{{ codeos_author }}"
+TEMA_CLARO = "{{ desktop_gtk_theme }}"
+TEMA_ESCURO = "{{ desktop_gtk_theme_dark }}"
+AJUDANTE = "/usr/local/libexec/codeos-welcome-helper"
+PREFERENCIA = os.path.join(GLib.get_user_config_dir(), "codeos", "welcome")
+
+PT = (locale.getlocale(locale.LC_MESSAGES)[0] or os.environ.get("LANG", "")).startswith("pt")
+
+
+def t(en, pt):
+    return pt if PT else en
+
+
+ATALHOS = [
+    ("Super", t("Start menu: just type to search", "Menu iniciar: é só digitar para buscar")),
+    ("Super + E", t("Files", "Arquivos")),
+    ("Super + V", t("Clipboard history", "Histórico da área de transferência")),
+    ("Super + Shift + S", t("Snip a part of the screen (paste with Ctrl+V)",
+                            "Recortar um pedaço da tela (cole com Ctrl+V)")),
+    ("Super + ← / →", t("Snap the window to half of the screen", "Encaixar a janela na metade da tela")),
+    ("Super + D", t("Show the desktop", "Mostrar a área de trabalho")),
+    ("Super + L", t("Lock the screen", "Bloquear a tela")),
+    ("Ctrl + Shift + Esc", t("Task Manager", "Gerenciador de Tarefas")),
+    ("Ctrl + Alt + T", t("Terminal", "Terminal")),
+    ("Super + `", t("Drop-down terminal", "Terminal que desce do topo")),
+    ("Super + Shift + C", t("Pick a color from the screen", "Pegar uma cor da tela")),
+    ("Super + Shift + T", t("Copy the text in a part of the screen", "Copiar o texto de um pedaço da tela")),
+    ("Ctrl + Super + T", t("Keep the window always on top", "Janela sempre por cima")),
+]
+
+# extras opcionais: (id do ajudante, ícone, nome, descrição, como saber se já está instalado)
+EXTRAS = [
+    ("ms-fonts", "preferences-desktop-font",
+     t("Microsoft fonts", "Fontes da Microsoft"),
+     t("Arial, Times New Roman, Verdana, Courier New and others, from Microsoft's free core fonts.",
+       "Arial, Times New Roman, Verdana, Courier New e outras, das fontes gratuitas da Microsoft."),
+     ("deb", "ttf-mscorefonts-installer")),
+    ("kdeconnect", "kdeconnect",
+     t("Phone integration (KDE Connect)", "Integração com o celular (KDE Connect)"),
+     t("Phone notifications, shared clipboard and file transfer over Wi-Fi.",
+       "Notificações do celular, área de transferência compartilhada e envio de arquivos pelo Wi-Fi."),
+     ("deb", "kdeconnect")),
+    ("solaar", "solaar",
+     t("Logitech devices (Solaar)", "Aparelhos Logitech (Solaar)"),
+     t("Battery, pairing and buttons of Logitech mice and keyboards.",
+       "Bateria, pareamento e botões de mouses e teclados Logitech."),
+     ("deb", "solaar")),
+    ("bottles", "com.usebottles.bottles",
+     t("Bottles", "Bottles"),
+     t("Run Windows programs in separate, tidy environments (.exe files already open with a double "
+       "click).",
+       "Roda programas do Windows em ambientes separados e organizados (arquivos .exe já abrem com "
+       "dois cliques)."),
+     ("flatpak", "com.usebottles.bottles")),
+]
+
+LICENCA_FONTES = t(
+    "These fonts are distributed by Microsoft under its own license (the \"core fonts for the web\" "
+    "EULA): they can be used freely, but not modified or redistributed. They are downloaded from the "
+    "internet during the installation.",
+    "Estas fontes são distribuídas pela Microsoft sob a licença dela (o EULA \"core fonts for the "
+    "web\"): podem ser usadas à vontade, mas não modificadas nem redistribuídas. Elas são baixadas da "
+    "internet durante a instalação.")
+URL_LICENCA_FONTES = "https://corefonts.sourceforge.net/eula.htm"
+
+
+CHAVE_SSH = os.path.expanduser("~/.ssh/id_ed25519")
+LINGUAGENS = [("node", "lts", "Node.js LTS"), ("python", "3.12", "Python 3.12"), ("go", "latest", "Go"),
+              ("rust", "stable", "Rust"), ("java", "21", "Java 21")]
+
+
+def git_config(chave):
+    r = subprocess.run(["git", "config", "--global", chave], capture_output=True, text=True)
+    return r.stdout.strip()
+
+
+def gh_conectado():
+    try:
+        return subprocess.run(["gh", "auth", "status"], capture_output=True, timeout=5).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def mise_globais():
+    try:
+        r = subprocess.run(["mise", "ls", "--global", "--json"], capture_output=True, text=True, timeout=10)
+        import json
+        return set(json.loads(r.stdout or "{}").keys())
+    except (OSError, subprocess.SubprocessError, ValueError):
+        return set()
+
+
+def no_grupo_docker():
+    import grp
+    try:
+        return os.environ.get("USER", "") in grp.getgrnam("docker").gr_mem
+    except KeyError:
+        return False
+
+
+def arquivos_ocultos():
+    r = subprocess.run(["xfconf-query", "-c", "thunar", "-p", "/last-show-hidden"], capture_output=True, text=True)
+    return r.stdout.strip() == "true"
+
+
+def mostrar_ao_iniciar():
+    try:
+        with open(PREFERENCIA) as f:
+            return "autostart=false" not in f.read()
+    except OSError:
+        return True
+
+
+def gravar_mostrar_ao_iniciar(sim):
+    os.makedirs(os.path.dirname(PREFERENCIA), exist_ok=True)
+    with open(PREFERENCIA, "w") as f:
+        f.write("autostart=true\n" if sim else "autostart=false\n")
+
+
+def instalado(como):
+    tipo, nome = como
+    if tipo == "deb":
+        r = subprocess.run(["dpkg-query", "-W", "-f=${Status}", nome], capture_output=True, text=True)
+        return "install ok installed" in r.stdout
+    if not GLib.find_program_in_path("flatpak"):
+        return False
+    r = subprocess.run(["flatpak", "info", nome], capture_output=True)
+    return r.returncode == 0
+
+
+def logitech_conectado():
+    base = "/sys/bus/usb/devices"
+    try:
+        for d in os.listdir(base):
+            try:
+                with open(os.path.join(base, d, "idVendor")) as f:
+                    if f.read().strip() == "046d":
+                        return True
+            except OSError:
+                pass
+    except OSError:
+        pass
+    return False
+
+
+def tema_escuro():
+    r = subprocess.run(["xfconf-query", "-c", "xsettings", "-p", "/Net/ThemeName"],
+                       capture_output=True, text=True)
+    return r.stdout.strip() == TEMA_ESCURO
+
+
+def aplicar_tema(escuro):
+    tema = TEMA_ESCURO if escuro else TEMA_CLARO
+    subprocess.run(["xfconf-query", "-c", "xsettings", "-p", "/Net/ThemeName", "-s", tema])
+    subprocess.run(["xfconf-query", "-c", "xfwm4", "-p", "/general/theme", "-s", tema])
+    # programas GNOME e flatpak leem o gsettings
+    subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", tema])
+    subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme",
+                    "prefer-dark" if escuro else "default"])
+
+
+def rotulo(texto, classe=None, **kw):
+    l = Gtk.Label(label=texto, **kw)
+    if classe:
+        l.get_style_context().add_class(classe)
+    return l
+
+
+class BoasVindas(Gtk.Window):
+    def __init__(self):
+        super().__init__(title=t(f"Welcome to {NOME}", f"Bem-vindo ao {NOME}"))
+        self.set_icon_name("codeos")
+        self.set_default_size(820, 600)
+        self.set_position(Gtk.WindowPosition.CENTER)
+
+        css = Gtk.CssProvider()
+        css.load_from_data(b"""
+            .titulo { font-size: 20pt; font-weight: bold; }
+            .subtitulo { opacity: 0.75; }
+            .tecla { font-family: monospace; font-weight: bold; padding: 2px 8px;
+                     border-radius: 5px; background-color: alpha(currentColor, 0.10); }
+            .tema { padding: 12px; }
+            .amostra-clara { background-color: #F3F4F6; border-radius: 6px; }
+            .amostra-escura { background-color: #202124; border-radius: 6px; }
+        """)
+        Gtk.StyleContext.add_provider_for_screen(self.get_screen(), css,
+                                                 Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+
+        paginas = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        paginas.add_titled(self.pagina_inicio(), "inicio", t("Welcome", "Início"))
+        paginas.add_titled(self.pagina_aparencia(), "aparencia", t("Appearance", "Aparência"))
+        paginas.add_titled(self.pagina_extras(), "extras", t("Extras", "Extras"))
+        paginas.add_titled(self.pagina_dev(), "dev", t("Developer", "Desenvolvedor"))
+        lateral = Gtk.StackSidebar(stack=paginas)
+        lateral.set_size_request(170, -1)
+
+        corpo = Gtk.Box()
+        corpo.pack_start(lateral, False, False, 0)
+        corpo.pack_start(paginas, True, True, 0)
+
+        rodape = Gtk.Box(spacing=12, margin=12)
+        marcar = Gtk.CheckButton(label=t("Show at startup", "Mostrar ao iniciar"))
+        marcar.set_active(mostrar_ao_iniciar())
+        marcar.connect("toggled", lambda b: gravar_mostrar_ao_iniciar(b.get_active()))
+        fechar = Gtk.Button.new_with_mnemonic(t("_Close", "_Fechar"))
+        fechar.connect("clicked", lambda *_: self.destroy())
+        rodape.pack_start(marcar, False, False, 0)
+        rodape.pack_end(fechar, False, False, 0)
+
+        tudo = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        tudo.pack_start(corpo, True, True, 0)
+        tudo.pack_start(Gtk.Separator(), False, False, 0)
+        tudo.pack_start(rodape, False, False, 0)
+        self.add(tudo)
+
+    # ── páginas ──────────────────────────────────────────────────────────────────────────────
+
+    def pagina_inicio(self):
+        caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin=28)
+        topo = Gtk.Box(spacing=18)
+        logo = Gtk.Image.new_from_icon_name("codeos", Gtk.IconSize.DIALOG)
+        logo.set_pixel_size(72)
+        topo.pack_start(logo, False, False, 0)
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, valign=Gtk.Align.CENTER, spacing=4)
+        textos.pack_start(rotulo(t(f"Welcome to {NOME} {VERSAO}", f"Bem-vindo ao {NOME} {VERSAO}"),
+                                 "titulo", xalign=0), False, False, 0)
+        textos.pack_start(rotulo(t(f"Created by {CRIADOR}", f"Criado por {CRIADOR}"), "subtitulo",
+                                 xalign=0), False, False, 0)
+        topo.pack_start(textos, True, True, 0)
+        caixa.pack_start(topo, False, False, 0)
+
+        caixa.pack_start(rotulo(t("The shortcuts you already know:", "Os atalhos que você já conhece:"),
+                                xalign=0, margin_top=22, margin_bottom=8), False, False, 0)
+        grade = Gtk.Grid(row_spacing=8, column_spacing=16)
+        for i, (tecla, oque) in enumerate(ATALHOS):
+            grade.attach(rotulo(tecla, "tecla", xalign=0, halign=Gtk.Align.START), 0, i, 1, 1)
+            grade.attach(rotulo(oque, xalign=0), 1, i, 1, 1)
+        caixa.pack_start(grade, False, False, 0)
+        caixa.pack_start(rotulo(t("Tip: right-click a program on the taskbar and choose \"Pin to taskbar\".",
+                                  "Dica: botão direito num programa da barra de tarefas → \"Pin to taskbar\"."),
+                                "subtitulo", xalign=0, margin_top=18, wrap=True), False, False, 0)
+        return caixa
+
+    def pagina_aparencia(self):
+        caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=28)
+        caixa.pack_start(rotulo(t("Appearance", "Aparência"), "titulo", xalign=0), False, False, 0)
+        caixa.pack_start(rotulo(t("Choose the mode. You can change it again here at any time.",
+                                  "Escolha o modo. Dá para trocar de novo aqui quando quiser."),
+                                "subtitulo", xalign=0), False, False, 0)
+
+        linha = Gtk.Box(spacing=16, margin_top=10, homogeneous=True)
+        escuro_agora = tema_escuro()
+        claro = None
+        for escuro, nome, classe in ((False, t("Light", "Claro"), "amostra-clara"),
+                                     (True, t("Dark", "Escuro"), "amostra-escura")):
+            botao = Gtk.RadioButton.new_from_widget(claro)
+            botao.set_mode(False)
+            botao.get_style_context().add_class("tema")
+            dentro = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+            amostra = Gtk.Box()
+            amostra.set_size_request(200, 110)
+            amostra.get_style_context().add_class(classe)
+            dentro.pack_start(amostra, False, False, 0)
+            dentro.pack_start(rotulo(nome), False, False, 0)
+            botao.add(dentro)
+            botao.set_active(escuro == escuro_agora)
+            botao.connect("toggled", lambda b, e=escuro: b.get_active() and aplicar_tema(e))
+            linha.pack_start(botao, True, True, 0)
+            claro = claro or botao
+        caixa.pack_start(linha, False, False, 0)
+
+        botoes = Gtk.Box(spacing=8, margin_top=18)
+        for texto, comando in ((t("Choose wallpaper…", "Escolher papel de parede…"), ["xfdesktop-settings"]),
+                               (t("Displays…", "Telas…"), ["xfce4-display-settings"])):
+            b = Gtk.Button(label=texto)
+            b.connect("clicked", lambda _b, c=comando: subprocess.Popen(c))
+            botoes.pack_start(b, False, False, 0)
+        caixa.pack_start(botoes, False, False, 0)
+        return caixa
+
+    def pagina_extras(self):
+        caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, margin=28)
+        caixa.pack_start(rotulo(t("Extras", "Extras"), "titulo", xalign=0), False, False, 0)
+        caixa.pack_start(rotulo(t("Optional. Installing asks for the administrator password.",
+                                  "Opcionais. Instalar pede a senha de administrador."),
+                                "subtitulo", xalign=0), False, False, 0)
+        lista = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, margin_top=8)
+        lista.get_style_context().add_class("frame")
+        logitech = logitech_conectado()
+        for ident, icone, nome, desc, como in EXTRAS:
+            if ident == "solaar" and logitech:
+                desc += t(" A Logitech device is connected now.", " Há um aparelho Logitech conectado agora.")
+            lista.add(self.linha_extra(ident, icone, nome, desc, como))
+        caixa.pack_start(lista, False, False, 0)
+        return caixa
+
+    def linha_extra(self, ident, icone, nome, desc, como):
+        linha = Gtk.Box(spacing=14, margin=10)
+        img = Gtk.Image.new_from_icon_name(icone, Gtk.IconSize.DND)
+        img.set_pixel_size(32)
+        linha.pack_start(img, False, False, 0)
+        textos = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        textos.pack_start(rotulo(nome, xalign=0), False, False, 0)
+        textos.pack_start(rotulo(desc, "subtitulo", xalign=0, wrap=True, max_width_chars=55),
+                          False, False, 0)
+        linha.pack_start(textos, True, True, 0)
+        direita = Gtk.Stack()
+        botao = Gtk.Button(label=t("Install", "Instalar"), valign=Gtk.Align.CENTER)
+        girando = Gtk.Spinner(active=True, valign=Gtk.Align.CENTER)
+        pronto = rotulo(t("Installed", "Instalado"), "subtitulo")
+        direita.add_named(botao, "botao")
+        direita.add_named(girando, "girando")
+        direita.add_named(pronto, "pronto")
+        linha.pack_end(direita, False, False, 0)
+        linha.show_all()
+        direita.set_visible_child_name("pronto" if instalado(como) else "botao")
+        botao.connect("clicked", lambda _b: self.instalar(ident, nome, como, direita))
+        return linha
+
+    # ── desenvolvedor ────────────────────────────────────────────────────────────────────────
+
+    def pagina_dev(self):
+        caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, margin=28)
+        caixa.pack_start(rotulo(t("Developer", "Desenvolvedor"), "titulo", xalign=0), False, False, 0)
+        caixa.pack_start(rotulo(t("Set up this account for programming. Each step is optional.",
+                                  "Prepare esta conta para programar. Cada passo é opcional."),
+                                "subtitulo", xalign=0), False, False, 0)
+
+        # Git
+        nome = Gtk.Entry(text=git_config("user.name"), placeholder_text=t("Your name", "Seu nome"), hexpand=True)
+        email = Gtk.Entry(text=git_config("user.email"), placeholder_text="email@exemplo.com", hexpand=True)
+        salvar = Gtk.Button(label=t("Save", "Salvar"))
+        estado_git = rotulo("", "subtitulo")
+
+        def salvar_git(_b):
+            subprocess.run(["git", "config", "--global", "user.name", nome.get_text().strip()])
+            subprocess.run(["git", "config", "--global", "user.email", email.get_text().strip()])
+            estado_git.set_text(t("Saved", "Salvo"))
+
+        salvar.connect("clicked", salvar_git)
+        linha = Gtk.Box(spacing=8)
+        for w in (nome, email, salvar, estado_git):
+            linha.pack_start(w, w in (nome, email), w in (nome, email), 0)
+        caixa.pack_start(self.secao("Git", t("Name and e-mail of your commits.", "Nome e e-mail dos seus commits."), linha),
+                         False, False, 0)
+
+        # SSH
+        ssh = Gtk.Box(spacing=8)
+        self.estado_ssh = rotulo("", "subtitulo")
+        criar = Gtk.Button(label=t("Create key", "Criar chave"))
+        copiar = Gtk.Button(label=t("Copy public key", "Copiar chave pública"))
+        github_ssh = Gtk.LinkButton(uri="https://github.com/settings/ssh/new",
+                                    label=t("Add it on GitHub", "Adicionar no GitHub"))
+        criar.connect("clicked", lambda _b: self.criar_chave(email.get_text().strip(), criar, copiar))
+        copiar.connect("clicked", lambda _b: self.copiar_chave())
+        for w in (criar, copiar, github_ssh, self.estado_ssh):
+            ssh.pack_start(w, False, False, 0)
+        tem = os.path.exists(CHAVE_SSH + ".pub")
+        criar.set_sensitive(not tem)
+        copiar.set_sensitive(tem)
+        self.estado_ssh.set_text(t("Key ready", "Chave pronta") if tem else "")
+        caixa.pack_start(self.secao(t("SSH key", "Chave SSH"),
+                                    t("To push code to GitHub, GitLab and servers without a password.",
+                                      "Para enviar código ao GitHub, GitLab e servidores sem senha."), ssh),
+                         False, False, 0)
+
+        # GitHub CLI
+        gh = Gtk.Box(spacing=8)
+        entrar = Gtk.Button(label=t("Sign in to GitHub", "Entrar no GitHub"))
+        entrar.connect("clicked", lambda _b: subprocess.Popen(
+            ["xfce4-terminal", "--hold", "-T", "GitHub", "-x", "gh", "auth", "login", "--web", "-h", "github.com"]))
+        gh.pack_start(entrar, False, False, 0)
+        gh.pack_start(rotulo(t("Signed in", "Conectado") if gh_conectado() else "", "subtitulo"), False, False, 0)
+        caixa.pack_start(self.secao("GitHub", t("Clone, pull requests and issues from the terminal (gh).",
+                                                "Clonar, pull requests e issues pelo terminal (gh)."), gh),
+                         False, False, 0)
+
+        # linguagens (mise, na conta, sem senha)
+        langs = Gtk.FlowBox(selection_mode=Gtk.SelectionMode.NONE, max_children_per_line=5, column_spacing=6)
+        globais = mise_globais()
+        for ferramenta, versao, rotulo_l in LINGUAGENS:
+            langs.add(self.botao_tarefa(rotulo_l, ferramenta in globais,
+                                        ["mise", "use", "--global", "--yes", f"{ferramenta}@{versao}"]))
+        caixa.pack_start(self.secao(t("Languages", "Linguagens"),
+                                    t("Installed with mise, per account. Each project can pin its own version.",
+                                      "Instaladas pelo mise, na sua conta. Cada projeto pode fixar a própria versão."),
+                                    langs), False, False, 0)
+
+        # editores e opções do sistema (pedem a senha)
+        outros = Gtk.Box(spacing=8)
+        outros.pack_start(self.botao_tarefa("VS Code", instalado(("deb", "code")),
+                                            ["pkexec", AJUDANTE, "vscode"]), False, False, 0)
+        outros.pack_start(self.botao_tarefa("Zed", instalado(("flatpak", "dev.zed.Zed")) or bool(GLib.find_program_in_path("zed")),
+                                            ["pkexec", AJUDANTE, "zed"]), False, False, 0)
+        docker = Gtk.CheckButton(label=t("Docker without sudo", "Docker sem sudo"))
+        docker.set_active(no_grupo_docker())
+        docker.connect("toggled", self.docker_sem_sudo)
+        outros.pack_start(docker, False, False, 12)
+        ocultos = Gtk.CheckButton(label=t("Show hidden files", "Mostrar arquivos ocultos"))
+        ocultos.set_active(arquivos_ocultos())
+        ocultos.connect("toggled", lambda b: subprocess.run(
+            ["xfconf-query", "-c", "thunar", "-p", "/last-show-hidden", "-n", "-t", "bool",
+             "-s", "true" if b.get_active() else "false"]))
+        outros.pack_start(ocultos, False, False, 0)
+        caixa.pack_start(self.secao(t("Editors and options", "Editores e opções"), None, outros), False, False, 0)
+
+        rolagem = Gtk.ScrolledWindow(hscrollbar_policy=Gtk.PolicyType.NEVER)
+        rolagem.add(caixa)
+        return rolagem
+
+    def secao(self, titulo, descricao, conteudo):
+        caixa = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4, margin_top=8)
+        caixa.pack_start(rotulo(titulo, xalign=0), False, False, 0)
+        if descricao:
+            caixa.pack_start(rotulo(descricao, "subtitulo", xalign=0, wrap=True), False, False, 0)
+        conteudo.set_margin_top(4)
+        caixa.pack_start(conteudo, False, False, 0)
+        return caixa
+
+    def botao_tarefa(self, texto, pronto, comando):
+        """Botão que roda um comando em segundo plano; vira "✓ texto" quando termina bem."""
+        pilha = Gtk.Stack()
+        botao = Gtk.Button(label=texto)
+        girando = Gtk.Box(spacing=6)
+        girando.pack_start(Gtk.Spinner(active=True), False, False, 0)
+        girando.pack_start(rotulo(texto), False, False, 0)
+        feito = rotulo("✓ " + texto, "subtitulo")
+        pilha.add_named(botao, "botao")
+        pilha.add_named(girando, "girando")
+        pilha.add_named(feito, "pronto")
+        pilha.show_all()
+        pilha.set_visible_child_name("pronto" if pronto else "botao")
+
+        def rodar(_b):
+            pilha.set_visible_child_name("girando")
+            try:
+                proc = Gio.Subprocess.new(comando, Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_MERGE)
+            except GLib.Error as e:
+                pilha.set_visible_child_name("botao")
+                self.erro(texto, e.message)
+                return
+
+            def fim(p, r):
+                try:
+                    _ok, saida, _e = p.communicate_utf8_finish(r)
+                except GLib.Error as e:
+                    saida = e.message
+                if p.get_exit_status() == 0:
+                    pilha.set_visible_child_name("pronto")
+                else:
+                    pilha.set_visible_child_name("botao")
+                    if p.get_exit_status() not in (126, 127):
+                        self.erro(texto, (saida or "").strip()[-600:])
+
+            proc.communicate_utf8_async(None, None, fim)
+
+        botao.connect("clicked", rodar)
+        return pilha
+
+    def criar_chave(self, email, criar, copiar):
+        d = Gtk.Dialog(title=t("New SSH key", "Nova chave SSH"), transient_for=self, modal=True)
+        d.add_button(t("_Cancel", "_Cancelar"), Gtk.ResponseType.CANCEL)
+        d.add_button(t("C_reate", "C_riar"), Gtk.ResponseType.OK)
+        area = d.get_content_area()
+        area.set_spacing(8)
+        area.set_border_width(12)
+        area.add(rotulo(t("Optional passphrase (asked when the key is used):",
+                          "Senha opcional da chave (pedida quando ela for usada):"), xalign=0))
+        senha = Gtk.Entry(visibility=False, activates_default=True)
+        area.add(senha)
+        d.set_default_response(Gtk.ResponseType.OK)
+        d.show_all()
+        resposta = d.run()
+        frase = senha.get_text()
+        d.destroy()
+        if resposta != Gtk.ResponseType.OK:
+            return
+        os.makedirs(os.path.dirname(CHAVE_SSH), mode=0o700, exist_ok=True)
+        r = subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", frase, "-C", email or os.environ.get("USER", ""),
+                            "-f", CHAVE_SSH], capture_output=True, text=True)
+        if r.returncode != 0:
+            self.erro(t("SSH key", "Chave SSH"), r.stderr.strip())
+            return
+        criar.set_sensitive(False)
+        copiar.set_sensitive(True)
+        self.copiar_chave()
+
+    def copiar_chave(self):
+        try:
+            with open(CHAVE_SSH + ".pub") as f:
+                chave = f.read().strip()
+        except OSError:
+            return
+        Gtk.Clipboard.get_default(self.get_display()).set_text(chave, -1)
+        self.estado_ssh.set_text(t("Public key copied — paste it on GitHub", "Chave pública copiada — cole no GitHub"))
+
+    def docker_sem_sudo(self, botao):
+        querer = botao.get_active()
+        if querer == no_grupo_docker():
+            return
+        if querer:
+            d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.WARNING,
+                                  text=t("Use Docker without sudo?", "Usar o Docker sem sudo?"))
+            d.format_secondary_text(t(
+                "Docker without sudo gives this account the same power as an administrator: any container can "
+                "read and change the whole system. It takes effect after logging out and in again.",
+                "Docker sem sudo dá a esta conta o mesmo poder de um administrador: qualquer container pode ler "
+                "e mudar o sistema inteiro. Vale depois de sair e entrar de novo na sessão."))
+            d.add_button(t("_Cancel", "_Cancelar"), Gtk.ResponseType.CANCEL)
+            d.add_button(t("_Allow", "_Permitir"), Gtk.ResponseType.ACCEPT)
+            ok = d.run() == Gtk.ResponseType.ACCEPT
+            d.destroy()
+            if not ok:
+                botao.set_active(False)
+                return
+        r = subprocess.run(["pkexec", AJUDANTE, "docker-on" if querer else "docker-off"])
+        if r.returncode != 0:
+            botao.handler_block_by_func(self.docker_sem_sudo)
+            botao.set_active(not querer)
+            botao.handler_unblock_by_func(self.docker_sem_sudo)
+
+    # ── instalação ───────────────────────────────────────────────────────────────────────────
+
+    def instalar(self, ident, nome, como, direita):
+        if ident == "ms-fonts" and not self.aceitar_licenca():
+            return
+        direita.set_visible_child_name("girando")
+        try:
+            processo = Gio.Subprocess.new(["pkexec", AJUDANTE, ident],
+                                          Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_MERGE)
+        except GLib.Error as e:
+            self.erro(nome, e.message)
+            direita.set_visible_child_name("botao")
+            return
+
+        def terminou(proc, resultado):
+            try:
+                _ok, saida, _err = proc.communicate_utf8_finish(resultado)
+            except GLib.Error as e:
+                saida = e.message
+            if instalado(como):
+                direita.set_visible_child_name("pronto")
+            else:
+                direita.set_visible_child_name("botao")
+                # 126/127: a pessoa cancelou a senha; aí não é erro
+                if proc.get_exit_status() not in (126, 127):
+                    self.erro(nome, (saida or "").strip()[-600:])
+
+        processo.communicate_utf8_async(None, None, terminou)
+
+    def aceitar_licenca(self):
+        d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.QUESTION,
+                              text=t("Microsoft's license", "Licença da Microsoft"))
+        d.format_secondary_text(LICENCA_FONTES)
+        d.get_message_area().pack_start(Gtk.LinkButton(uri=URL_LICENCA_FONTES,
+                                                       label=t("Read the license", "Ler a licença")),
+                                        False, False, 0)
+        d.add_button(t("_Cancel", "_Cancelar"), Gtk.ResponseType.CANCEL)
+        d.add_button(t("_Accept and install", "_Aceitar e instalar"), Gtk.ResponseType.ACCEPT)
+        d.show_all()
+        resposta = d.run()
+        d.destroy()
+        return resposta == Gtk.ResponseType.ACCEPT
+
+    def erro(self, nome, detalhe):
+        d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.ERROR,
+                              buttons=Gtk.ButtonsType.CLOSE,
+                              text=t(f"Could not install {nome}", f"Não foi possível instalar {nome}"))
+        d.format_secondary_text(detalhe or t("Check the internet connection and try again.",
+                                             "Confira a conexão com a internet e tente de novo."))
+        d.run()
+        d.destroy()
+
+
+def main():
+    # na sessão "live" do pendrive quem abre é o instalador; a boas-vindas fica para o sistema instalado
+    sessao_live = os.path.exists("/cdrom/casper/filesystem.squashfs")
+    if "--autostart" in sys.argv and (sessao_live or not mostrar_ao_iniciar()):
+        return
+    janela = BoasVindas()
+    janela.connect("destroy", Gtk.main_quit)
+    janela.show_all()
+    Gtk.main()
+
+
+if __name__ == "__main__":
+    main()

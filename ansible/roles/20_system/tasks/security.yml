@@ -1,0 +1,104 @@
+# Padrões de segurança de um sistema de mesa, como o Windows e o Ubuntu: firewall ligado bloqueando o que
+# chega de fora, nenhum servidor SSH escutando sem pedido, atualizações de segurança automáticas.
+- name: Firewall, atualizações automáticas e brilho sem administrador
+  ansible.builtin.apt:
+    name: [ufw, unattended-upgrades, brightnessctl]
+    state: present
+  become: true
+
+# O brightnessctl muda o brilho pelo grupo video (regra udev do pacote): toda conta de pessoa entra nele,
+# a sua agora e as criadas depois (EXTRA_GROUPS do adduser), como o acesso à tela de um sistema de mesa.
+- name: Sua conta no grupo do brilho da tela
+  ansible.builtin.user:
+    name: "{{ codeos_user }}"
+    groups: video
+    append: true
+  become: true
+  when: not codeos_imagem
+
+- name: Contas novas também no grupo do brilho da tela
+  ansible.builtin.lineinfile:
+    path: /etc/adduser.conf
+    regexp: "^#?{{ item.chave }}="
+    line: "{{ item.chave }}={{ item.valor }}"
+  become: true
+  loop:
+    - { chave: EXTRA_GROUPS, valor: '"users video"' }
+    - { chave: ADD_EXTRA_GROUPS, valor: "1" }
+
+# Entrada bloqueada; saída livre. Da rede local (como a "rede privada" do Windows) entram só a descoberta
+# de computadores Windows/Samba (wsdd) e o KDE Connect, se ele for instalado pela tela de boas-vindas. A
+# descoberta de impressoras e aparelhos (mDNS) já é liberada pelas regras padrão do ufw.
+- name: Firewall bloqueando o que chega de fora
+  community.general.ufw:
+    direction: incoming
+    default: deny
+  become: true
+
+- name: Firewall liberando o que sai
+  community.general.ufw:
+    direction: outgoing
+    default: allow
+  become: true
+
+- name: Rede local (descoberta de computadores Windows e KDE Connect)
+  community.general.ufw:
+    rule: allow
+    src: "{{ item.0 }}"
+    port: "{{ item.1.port }}"
+    proto: "{{ item.1.proto }}"
+    comment: "CodeOS: {{ item.1.para }}"
+  become: true
+  loop: "{{ system_lan_ranges | product(system_lan_services) | list }}"
+  loop_control:
+    label: "{{ item.0 }} {{ item.1.para }}"
+
+- name: Firewall ligado
+  community.general.ufw:
+    state: enabled
+  become: true
+  when: not codeos_imagem
+
+- name: Firewall ligado no primeiro boot (imagem da ISO)
+  ansible.builtin.lineinfile:
+    path: /etc/ufw/ufw.conf
+    regexp: "^ENABLED="
+    line: "ENABLED=yes"
+  become: true
+  when: codeos_imagem
+
+# O Ubuntu desktop não traz servidor SSH; quem instalou o openssh-server ganha o ssh.socket escutando na
+# porta 22 de todas as redes. Fica desligado; para usar: system_ssh_server: true (host_vars).
+- name: Servidor SSH desligado (porta 22 fechada)
+  ansible.builtin.shell: |
+    mudou=
+    for u in ssh.socket ssh.service; do
+      systemctl list-unit-files "$u" --no-legend 2>/dev/null | grep -q . || continue
+      if systemctl is-enabled --quiet "$u" || systemctl is-active --quiet "$u"; then
+        systemctl disable {{ '' if codeos_imagem else '--now' }} "$u" && mudou=1
+      fi
+    done
+    [ -z "$mudou" ] || echo mudou
+  become: true
+  register: system_ssh_off
+  changed_when: "'mudou' in system_ssh_off.stdout"
+  when: not system_ssh_server
+
+- name: Atualizações de segurança automáticas (como o Ubuntu)
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      // Gerenciado pelo CodeOS (ansible/roles/20_system): lista de pacotes e correções de segurança
+      // instaladas todo dia, sozinhas.
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: "0644"
+  become: true
+
+# regras de sudo sem senha desta máquina que davam acesso de administrador sem senha (host_vars)
+- name: Tirar regras de sudo sem senha inseguras
+  ansible.builtin.file:
+    path: "/etc/sudoers.d/{{ item }}"
+    state: absent
+  become: true
+  loop: "{{ system_sudoers_remove }}"

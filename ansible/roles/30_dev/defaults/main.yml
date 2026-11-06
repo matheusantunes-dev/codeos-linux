@@ -1,0 +1,33 @@
+# Ferramentas de desenvolvimento do CodeOS (Módulo 6), para todo usuário.
+
+# Base, do próprio Ubuntu (como as "Command Line Tools" do macOS).
+dev_packages:
+  - build-essential
+  - git
+  - gh                  # GitHub CLI (repositório oficial do GitHub)
+  - curl
+  - jq                  # JSON no terminal
+  - ripgrep
+  - fd-find             # busca de arquivos (comando fd)
+  - fzf                 # busca interativa
+  - bat                 # cat com cores (comando bat)
+  - tree
+  - cmake
+  - sqlite3
+  - meld                # comparar arquivos lado a lado
+  - pipx                # ferramentas Python sem bagunçar o sistema
+  - python3-venv
+  - btop
+  - bash-completion
+  - command-not-found   # sugere o pacote quando um comando não existe
+  - earlyoom            # fecha o programa que estoura a RAM antes de a máquina congelar
+  - mise                # versões de Node, Python, Go, Rust, Java por projeto (repositório oficial)
+  - docker.io
+  - docker-compose-v2
+  - podman              # containers sem administrador e sem serviço parado gastando RAM
+  - distrobox           # outra distro (Arch, Fedora...) integrada ao CodeOS, como o WSL do Windows
+
+# Nomes curtos que o Ubuntu troca por causa de conflitos com pacotes antigos.
+dev_command_links:
+  - { name: fd, target: /usr/bin/fdfind }
+  - { name: bat, target: /usr/bin/batcat }

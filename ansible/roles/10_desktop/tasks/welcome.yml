@@ -1,0 +1,44 @@
+# Tela de boas-vindas "Welcome to CodeOS": abre no login até a pessoa desmarcar "Show at startup" (a
+# escolha fica em ~/.config/codeos/welcome) e fica no menu. É ligada pelo sistema, não copiada para a
+# conta, então vale também para uma pasta pessoal restaurada do backup. Os extras opcionais são
+# instalados pelo codeos-welcome-helper, que só aceita os itens dele, com a senha pedida pelo pkexec.
+# O Flathub vem ligado para todos, como no Mint, no Pop!_OS e no Zorin (o Ubuntu não traz o flatpak).
+- name: Repositório Flathub do sistema
+  community.general.flatpak_remote:
+    name: flathub
+    flatpakrepo_url: https://dl.flathub.org/repo/flathub.flatpakrepo
+    method: system
+    state: present
+  become: true
+
+- name: Programa da tela de boas-vindas
+  ansible.builtin.template:
+    src: welcome/codeos-welcome.j2
+    dest: /usr/local/bin/codeos-welcome
+    mode: "0755"
+  become: true
+
+- name: Pasta do ajudante de instalação
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Ajudante que instala os extras e a permissão dele (polkit)
+  ansible.builtin.copy:
+    src: "welcome/{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "{{ item.mode }}"
+  become: true
+  loop:
+    - { src: codeos-welcome-helper, dest: /usr/local/libexec/codeos-welcome-helper, mode: "0755" }
+    - { src: org.codeos.welcome.policy, dest: /usr/share/polkit-1/actions/org.codeos.welcome.policy, mode: "0644" }
+    - { src: codeos-welcome.desktop, dest: /usr/share/codeos/applications/codeos-welcome.desktop, mode: "0644" }
+
+- name: Abrir a tela de boas-vindas no login
+  ansible.builtin.copy:
+    src: autostart/codeos-welcome.desktop
+    dest: "{{ desktop_xdg_dir }}/autostart/codeos-welcome.desktop"
+    mode: "0644"
+  become: true

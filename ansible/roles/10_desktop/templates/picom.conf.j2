@@ -1,0 +1,45 @@
+# {{ ansible_managed }}
+# Efeitos da sessão CodeOS (picom 10). Para personalizar, copie para ~/.config/picom/picom.conf.
+# xrender: não depende de OpenGL; com glx, menus e janelas saíam transparentes em alguns drivers
+backend = "xrender";
+vsync = true;
+use-damage = true;
+unredir-if-possible = true;   # jogos e vídeos em tela cheia sem o compositor no meio
+
+# Janelas e menus surgem e somem com fade curto
+fading = true;
+fade-in-step = 0.06;
+fade-out-step = 0.06;
+fade-delta = 6;
+no-fading-openclose = false;
+
+# Sombras suaves
+shadow = true;
+shadow-radius = 14;
+shadow-opacity = 0.32;
+shadow-offset-x = -12;
+shadow-offset-y = -10;
+shadow-exclude = [
+  "window_type = 'dock'",
+  "window_type = 'desktop'",
+  "_GTK_FRAME_EXTENTS@:c",
+  "class_g = 'Xfce4-screenshooter'"
+];
+
+# Cantos arredondados (como o tema Fluent), menos em barra, área de trabalho e tela cheia
+corner-radius = 8;
+rounded-corners-exclude = [
+  "window_type = 'dock'",
+  "window_type = 'desktop'",
+  "fullscreen"
+];
+
+# Menus e dicas levemente translúcidos
+wintypes:
+{
+  tooltip = { fade = true; shadow = true; opacity = 0.95; full-shadow = false; };
+  popup_menu = { opacity = 0.97; };
+  dropdown_menu = { opacity = 0.97; };
+  dock = { shadow = false; };
+  dnd = { shadow = false; };
+};

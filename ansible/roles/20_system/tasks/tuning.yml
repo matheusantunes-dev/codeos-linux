@@ -1,0 +1,39 @@
+- name: zram (swap comprimida na RAM)
+  ansible.builtin.apt:
+    name: systemd-zram-generator
+    state: present
+  become: true
+
+- name: Tamanho e compressão do zram
+  ansible.builtin.copy:
+    dest: /etc/systemd/zram-generator.conf
+    content: |
+      # Gerenciado pelo CodeOS (ansible/roles/20_system). Prioridade acima do /swapfile do disco.
+      [zram0]
+      zram-size = {{ system_zram_size }}
+      compression-algorithm = zstd
+      swap-priority = 100
+    mode: "0644"
+  become: true
+  register: system_zram_conf
+
+- name: Ligar o zram agora
+  ansible.builtin.systemd_service:
+    name: systemd-zram-setup@zram0.service
+    state: restarted
+    daemon_reload: true
+  become: true
+  when: system_zram_conf is changed and not codeos_imagem
+
+- name: Limites para IDEs e ferramentas que observam muitos arquivos
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/60-codeos-dev.conf
+    content: |
+      # Gerenciado pelo CodeOS (ansible/roles/20_system).
+      fs.inotify.max_user_watches = {{ system_inotify_watches }}
+      fs.inotify.max_user_instances = {{ system_inotify_instances }}
+      # com zram, trocar para a RAM comprimida é barato
+      vm.swappiness = 100
+    mode: "0644"
+  become: true
+  notify: Aplicar o sysctl

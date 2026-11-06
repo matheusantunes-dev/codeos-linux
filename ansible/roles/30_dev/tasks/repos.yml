@@ -1,0 +1,78 @@
+# Repositórios dos próprios projetos, assinados. Os nomes e as chaves são os mesmos que os pacotes
+# (gh, code) usam, para o apt não ver o mesmo repositório duas vezes.
+- name: Pasta das chaves do apt
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Chave do GitHub CLI
+  ansible.builtin.get_url:
+    url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    mode: "0644"
+  become: true
+
+- name: Repositório do GitHub CLI
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/github-cli.list
+    content: |
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main
+    mode: "0644"
+  become: true
+  register: dev_repo_gh
+
+- name: Chave do mise
+  ansible.builtin.get_url:
+    url: https://mise.jdx.dev/gpg-key.pub
+    dest: /etc/apt/keyrings/mise-archive-keyring.asc
+    mode: "0644"
+  become: true
+
+- name: Repositório do mise
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/mise.list
+    content: |
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/mise-archive-keyring.asc] https://mise.jdx.dev/deb stable main
+    mode: "0644"
+  become: true
+  register: dev_repo_mise
+
+# o VS Code é instalado pela tela de boas-vindas (opcional); o repositório fica pronto. O pacote code
+# regrava este mesmo arquivo com o mesmo conteúdo.
+- name: Chave da Microsoft (VS Code)
+  ansible.builtin.get_url:
+    url: https://packages.microsoft.com/keys/microsoft.asc
+    dest: /usr/share/keyrings/microsoft.asc
+    mode: "0644"
+  become: true
+  register: dev_key_microsoft
+
+- name: Chave da Microsoft no formato que o pacote do VS Code usa
+  ansible.builtin.shell: gpg --dearmor < /usr/share/keyrings/microsoft.asc > /usr/share/keyrings/microsoft.gpg
+  args:
+    creates: /usr/share/keyrings/microsoft.gpg
+  become: true
+
+- name: Repositório do VS Code
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/vscode.sources
+    content: |
+      ### THIS FILE IS AUTOMATICALLY CONFIGURED ###
+      # You may comment out this entry, but any other modifications may be lost.
+      Types: deb
+      URIs: https://packages.microsoft.com/repos/code
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /usr/share/keyrings/microsoft.gpg
+    mode: "0644"
+  become: true
+  register: dev_repo_vscode
+
+- name: Atualizar a lista de pacotes com os repositórios novos
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+  when: dev_repo_gh is changed or dev_repo_mise is changed or dev_repo_vscode is changed

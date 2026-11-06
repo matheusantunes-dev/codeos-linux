@@ -1,0 +1,3 @@
+# Regra personalizada para o Redragon Storm M808 (Holtek Controller)
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="04d9", ATTRS{idProduct}=="fc5f", MODE="0666"
+SUBSYSTEM=="input", ATTRS{idVendor}=="04d9", ATTRS{idProduct}=="fc5f", MODE="0666"

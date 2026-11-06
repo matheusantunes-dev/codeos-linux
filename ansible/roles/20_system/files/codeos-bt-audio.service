@@ -1,0 +1,11 @@
+[Unit]
+Description=CodeOS: fones Bluetooth reconectados e tocando juntos
+After=pipewire-pulse.service wireplumber.service
+
+[Service]
+ExecStart=/usr/local/bin/codeos-bt-audio
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- {{ ansible_managed }}
+     Papel de parede padrão em todos os monitores e workspaces; o usuário troca pelo menu da área de trabalho.
+     image-style 5 = "Ampliado" (preenche a tela sem distorcer). -->
+<channel name="xfce4-desktop" version="1.0">
+  <property name="backdrop" type="empty">
+    <property name="screen0" type="empty">
+{% for monitor in desktop_wallpaper_monitors %}
+      <property name="monitor{{ monitor }}" type="empty">
+{% for ws in range(4) %}
+        <property name="workspace{{ ws }}" type="empty">
+          <property name="last-image" type="string" value="{{ desktop_wallpaper_dir }}/{{ desktop_wallpaper_default }}"/>
+          <property name="image-style" type="int" value="5"/>
+          <property name="color-style" type="int" value="0"/>
+          <property name="rgba1" type="array">
+            <value type="double" value="0.039216"/>
+            <value type="double" value="0.105882"/>
+            <value type="double" value="0.235294"/>
+            <value type="double" value="1.000000"/>
+          </property>
+        </property>
+{% endfor %}
+      </property>
+{% endfor %}
+    </property>
+  </property>
+  <property name="desktop-icons" type="empty">
+    <property name="icon-size" type="uint" value="48"/>
+    <!-- minimalista: só os seus arquivos, a lixeira e os discos removíveis -->
+    <property name="file-icons" type="empty">
+      <property name="show-home" type="bool" value="false"/>
+      <property name="show-filesystem" type="bool" value="false"/>
+      <property name="show-trash" type="bool" value="true"/>
+      <property name="show-removable" type="bool" value="true"/>
+    </property>
+    <property name="tooltip-size" type="double" value="96.000000"/>
+  </property>
+</channel>

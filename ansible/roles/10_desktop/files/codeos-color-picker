@@ -1,0 +1,7 @@
+#!/bin/bash
+# Super+Shift+C: seletor de cor, como o do PowerToys. Clique num ponto da tela e o código hex vai para a
+# área de transferência (Ctrl+V), com um aviso.
+cor=$(gpick --single --output --no-newline 2>/dev/null) || exit 0
+[ -n "$cor" ] || exit 0
+printf '%s' "$cor" | xclip -selection clipboard
+notify-send -i color-picker -a "CodeOS" "Cor copiada" "$cor"

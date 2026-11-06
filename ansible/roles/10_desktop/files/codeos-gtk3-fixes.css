@@ -1,0 +1,100 @@
+/* Correções do CodeOS sobre o Fluent (anexadas pelo ansible/roles/10_desktop). */
+
+/* listas: seleção em azul legível (o Fluent deixava a linha preta com texto preto) */
+treeview.view:selected,
+treeview.view:selected:focus,
+.background:not(.csd) > notebook.frame scrolledwindow.frame treeview.view:selected {
+  background-color: #1A73E8;
+  color: #FFFFFF;
+}
+
+/* barra de tarefas escura: texto e ícones simbólicos claros (o sino ficava preto) */
+.xfce4-panel.background,
+.xfce4-panel.background button,
+.xfce4-panel.background label {
+  color: #E6EDF7;
+}
+
+/* área de trabalho: ícone selecionado em azul translúcido, texto branco (o Fluent pintava tudo de preto) */
+XfdesktopIconView.view:active {
+  background-color: rgba(26, 115, 232, 0.45);
+  color: #FFFFFF;
+}
+
+/* barra: área da direita do tamanho do Windows, ícones de 16 px com 4 px de folga de cada lado; o sino
+   afastado do volume e junto do relógio (o volume, o sino e os ícones antigos da bandeja são acertados
+   pelo módulo da barra, codeos-taskbar-pins.c) */
+#sn-button,
+#pulseaudio-button,
+#xfce4-notification-plugin {
+  padding: 0;
+  min-width: 0;
+}
+#sn-button {
+  padding: 0 4px;
+}
+#xfce4-notification-plugin {
+  margin-left: 10px;
+}
+
+/* faixa "mostrar área de trabalho" no canto: sem a folga de botão, só um realce ao passar o mouse */
+#genmon_imagebutton {
+  padding: 0 2px;
+  min-width: 0;
+  border-radius: 0;
+}
+
+/* barra: janela minimizada com o ícone na cor normal (o Xfce deixava com 50% de opacidade) */
+/* (propriedade de estilo do XfceTasklist; com seletor por tipo o plugin não a lia) */
+* {
+  -XfceTasklist-minimized-icon-lucency: 100;
+}
+
+/* barra: programas abertos marcados como no Cinnamon (os fixados fechados ficam só com o ícone): quadrado
+   fosco atrás e listra embaixo da largura do quadrado, sempre a mesma; a janela em uso tem o quadrado mais
+   claro e a listra na cor do CodeOS */
+.xfce4-panel .tasklist button {
+  margin: 3px 1px;
+  border: none;
+  border-radius: 6px;
+  box-shadow: none;
+  background-color: alpha(#FFFFFF, 0.07);
+  background-image: linear-gradient(alpha(#C9D4E8, 0.80), alpha(#C9D4E8, 0.80));
+  background-size: 100% 3px;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+}
+.xfce4-panel .tasklist button:hover {
+  background-color: alpha(#FFFFFF, 0.12);
+}
+/* janela minimizada com o ícone normal, como no Windows (a barra o deixava meio transparente) */
+.xfce4-panel .tasklist image.minimized {
+  opacity: 1;
+}
+.xfce4-panel .tasklist button:checked {
+  background-color: alpha(#FFFFFF, 0.16);
+  background-image: linear-gradient(#05C0DF, #05C0DF);
+}
+
+/* prévia das janelas ao passar o mouse na barra (módulo da barra, codeos-taskbar-pins.c) */
+.codeos-previa {
+  background-color: #202124;
+  border: 1px solid alpha(#FFFFFF, 0.08);
+  padding: 6px;
+}
+.codeos-previa label {
+  color: #E6EDF7;
+}
+.codeos-previa button {
+  color: #E6EDF7;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+.codeos-previa-cartao {
+  padding: 6px;
+  border-radius: 6px;
+}
+.codeos-previa-cartao:hover {
+  background-color: alpha(#FFFFFF, 0.08);
+}

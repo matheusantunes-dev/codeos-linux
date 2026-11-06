@@ -1,0 +1,48 @@
+- name: Pastas de cache
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ codeos_cache }}/downloads"
+    - "{{ codeos_cache }}/src"
+    - "{{ codeos_cache }}/build/fluent-{{ desktop_fluent_version }}"
+
+- name: Baixar o tema Fluent {{ desktop_fluent_version }}
+  ansible.builtin.get_url:
+    url: "https://github.com/vinceliuice/Fluent-gtk-theme/archive/refs/tags/{{ desktop_fluent_version }}.tar.gz"
+    dest: "{{ codeos_cache }}/downloads/fluent-{{ desktop_fluent_version }}.tar.gz"
+    checksum: "sha256:{{ desktop_fluent_sha256 }}"
+    mode: "0644"
+
+- name: Extrair o código do tema
+  ansible.builtin.unarchive:
+    src: "{{ codeos_cache }}/downloads/fluent-{{ desktop_fluent_version }}.tar.gz"
+    dest: "{{ codeos_cache }}/src"
+    remote_src: true
+    creates: "{{ codeos_cache }}/src/Fluent-gtk-theme-{{ desktop_fluent_version }}/install.sh"
+
+# Compila como usuário numa pasta de cache: o script de terceiros nunca roda como root.
+- name: Compilar as variantes clara e escura (cantos arredondados, estilo Windows 11)
+  ansible.builtin.command:
+    argv: [./install.sh, -d, "{{ codeos_cache }}/build/fluent-{{ desktop_fluent_version }}",
+           -n, Fluent, -t, default, -c, light, dark, -s, standard, --tweaks, round]
+    chdir: "{{ codeos_cache }}/src/Fluent-gtk-theme-{{ desktop_fluent_version }}"
+    creates: "{{ codeos_cache }}/build/fluent-{{ desktop_fluent_version }}/{{ desktop_gtk_theme }}/gtk-3.0/gtk.css"
+
+# Na cópia compilada (não em /usr/share), para o rsync com --delete levar junto e não apagar.
+- name: Anexar as correções do CodeOS ao CSS do tema
+  ansible.builtin.blockinfile:
+    path: "{{ codeos_cache }}/build/fluent-{{ desktop_fluent_version }}/{{ item.0 }}/gtk-3.0/{{ item.1 }}"
+    block: "{{ lookup('ansible.builtin.file', 'codeos-gtk3-fixes.css') }}"
+    marker: "/* {mark} CodeOS */"
+  loop: "{{ [desktop_gtk_theme, desktop_gtk_theme_dark] | product(['gtk.css', 'gtk-dark.css']) | list }}"
+
+- name: Instalar os temas em /usr/share/themes
+  ansible.builtin.command:
+    argv: [rsync, -a, --delete, --chown=root:root, --itemize-changes,
+           "{{ codeos_cache }}/build/fluent-{{ desktop_fluent_version }}/{{ item }}/", "/usr/share/themes/{{ item }}/"]
+  become: true
+  loop: ["{{ desktop_gtk_theme }}", "{{ desktop_gtk_theme_dark }}"]
+  register: desktop_theme_sync
+  changed_when: desktop_theme_sync.stdout | length > 0

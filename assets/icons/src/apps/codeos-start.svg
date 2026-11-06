@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- Botão do menu iniciar: o logo ampliado até as bordas (hexágono de r=24), para ocupar na barra
+       o mesmo espaço que o logo do Mint ocupava. Mesmo desenho do codeos.svg:
+       Logo oficial do CodeOS, vetorizado de logo/source/codeos-logo-source.png.
+       Coordenadas no espaço do original (centro 511.5,285.5; hexágono externo r=232.5, interno r=194.5),
+       reduzidas para um hexágono de r=20 na grade de 48. -->
+  <g transform="translate(24 24) scale(0.103226) translate(-511.5 -285.5)">
+    <!-- moldura ciano -->
+    <polygon fill="{{accent}}"
+             points="511.5,53 712.85,169.25 712.85,401.75 511.5,518 310.15,401.75 310.15,169.25"/>
+    <!-- miolo azul + aresta superior esquerda azul até a borda -->
+    <polygon fill="{{primary}}"
+             points="511.5,53 511.5,91 679.94,188.25 679.94,382.75 511.5,480 343.06,382.75 343.06,188.25 310.15,169.25"/>
+    <g fill="{{paper}}">
+      <polygon points="458,228 458,257 411.5,285.5 458,314 458,343 382,299 382,272"/>
+      <polygon points="565,228 641,272 641,299 565,343 565,314 611.5,285.5 565,257"/>
+      <polygon points="524,205 551,205 499,366 472,366"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,6 @@
+#!/bin/bash
+# CodeOS: abre a barra de tarefas com o módulo "Pin to taskbar" (codeos-taskbar-pins). O módulo se tira do
+# GTK_MODULES ao carregar, então os programas abertos pela barra não o herdam. O nome "xfce4-panel" é
+# mantido (exec -a) para a barra, ao se reiniciar, passar de novo por aqui.
+export GTK_MODULES="${GTK_MODULES:+$GTK_MODULES:}/usr/local/lib/codeos/libcodeos-taskbar-pins.so"
+exec -a xfce4-panel /usr/bin/xfce4-panel "$@"

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Mostra a área de trabalho; clicando de novo, as janelas voltam (como a faixa do canto do Windows).
+if wmctrl -m | grep -q 'showing the desktop.* ON'; then
+    exec wmctrl -k off
+fi
+exec wmctrl -k on

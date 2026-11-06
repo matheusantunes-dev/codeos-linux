@@ -1,0 +1,11 @@
+[Unit]
+Description=CodeOS: reconecta o adaptador Bluetooth USB quando ele trava
+After=bluetooth.service
+
+[Service]
+ExecStart=/usr/local/sbin/codeos-bt-watchdog
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

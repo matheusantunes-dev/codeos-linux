@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <path d="M4 11 Q4 9 6 9 H17.5 L21.5 13 H42 Q44 13 44 15 V38 Q44 40 42 40 H6 Q4 40 4 38 Z" fill="{{primary-dark}}"/>
+  <rect x="7" y="15" width="34" height="8" rx="1.5" fill="{{paper}}"/>
+  <path d="M4 19 Q4 17 6 17 H42 Q44 17 44 19 V38 Q44 40 42 40 H6 Q4 40 4 38 Z" fill="{{primary-light}}"/>
+  <g transform="translate(18 22.5)" fill="none" stroke="{{glyph}}" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round">
+    <!-- GLYPH -->
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- {{ ansible_managed }}
+     Só o que muda em relação aos padrões do xfwm4 (/usr/share/xfwm4/defaults). -->
+<channel name="xfwm4" version="1.0">
+  <property name="general" type="empty">
+    <property name="theme" type="string" value="{{ desktop_gtk_theme }}"/>
+    <property name="title_font" type="string" value="{{ desktop_title_font }}"/>
+    <property name="title_alignment" type="string" value="left"/>
+    <!-- ícone da janela à esquerda; minimizar, maximizar e fechar à direita -->
+    <property name="button_layout" type="string" value="O|HMC"/>
+    <property name="placement_mode" type="string" value="center"/>
+    <property name="tile_on_move" type="bool" value="true"/>
+    <property name="snap_to_border" type="bool" value="true"/>
+    <property name="wrap_windows" type="bool" value="false"/>
+    <property name="workspace_count" type="int" value="2"/>
+    <!-- o compositor da sessão é o picom (sombras, cantos e fade); o do xfwm4 fica desligado -->
+    <property name="use_compositing" type="bool" value="false"/>
+    <property name="cycle_preview" type="bool" value="true"/>
+  </property>
+</channel>

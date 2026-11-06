@@ -1,0 +1,22 @@
+# Caminhos e usuário: o playbook roda como você; o sudo é pedido só nas tarefas com become.
+codeos_repo: "{{ playbook_dir | dirname }}"
+codeos_user: "{{ lookup('env', 'USER') }}"
+codeos_home: "{{ lookup('env', 'HOME') }}"
+codeos_cache: "{{ codeos_home }}/.cache/codeos"
+
+# Trava do Módulo 0: nenhum módulo roda sem backup verificado recentemente.
+codeos_backup_max_age_hours: 24
+# Snapshot do Timeshift (no HDD externo) antes de qualquer mudança.
+codeos_snapshot_before: true
+
+# Identidade do sistema (os-release, lsb-release, tela de login de texto, "About CodeOS").
+codeos_name: CodeOS
+codeos_version: "1.0"
+codeos_author: Matheus Antunes Reis
+codeos_url: https://github.com/matheusantunes-dev
+
+# Modo imagem: true quando os papéis montam o sistema da ISO (num chroot, sem sessão gráfica, sem conta de
+# pessoa e sem serviços rodando). Pula a trava de backup, o que mexe na conta e na sessão (padrões
+# levados para a sua conta, limpezas em ~, gsettings), os ajustes da máquina e só habilita os serviços
+# em vez de ligá-los. Uso: ansible-playbook site.yml -e codeos_imagem=true --tags desktop,system,dev
+codeos_imagem: false

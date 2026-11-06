@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Install CodeOS
+Name[pt_BR]=Instalar o CodeOS
+Comment=Install CodeOS on this computer
+Comment[pt_BR]=Instala o CodeOS neste computador
+Exec=sudo -E calamares
+Icon=codeos
+Terminal=false
+Categories=System;

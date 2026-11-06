@@ -1,0 +1,24 @@
+# Apps padrão da sessão CodeOS (ansible/roles/10_desktop). No lugar dos do Mint
+# (/usr/share/applications/mimeapps.list: Nemo, xviewer, xed), que ficam escondidos no CodeOS.
+# Uma escolha sua (Abrir com > padrão, ou ~/.config/mimeapps.list) continua valendo por cima disto.
+[Default Applications]
+inode/directory=thunar.desktop
+image/png=org.xfce.ristretto.desktop
+image/jpeg=org.xfce.ristretto.desktop
+image/gif=org.xfce.ristretto.desktop
+image/webp=org.xfce.ristretto.desktop
+image/bmp=org.xfce.ristretto.desktop
+image/tiff=org.xfce.ristretto.desktop
+image/svg+xml=org.xfce.ristretto.desktop
+text/plain=org.xfce.mousepad.desktop
+application/pdf=atril.desktop
+application/zip=org.gnome.FileRoller.desktop
+application/vnd.rar=org.gnome.FileRoller.desktop
+application/x-rar=org.gnome.FileRoller.desktop
+application/x-7z-compressed=org.gnome.FileRoller.desktop
+application/x-ms-dos-executable=codeos-wine.desktop
+application/x-msdownload=codeos-wine.desktop
+application/vnd.microsoft.portable-executable=codeos-wine.desktop
+application/x-msdos-program=codeos-wine.desktop
+application/x-ms-shortcut=codeos-wine.desktop
+application/x-msi=codeos-wine-msi.desktop

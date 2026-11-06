@@ -1,0 +1,1 @@
+SUBSYSTEM=="usb", KERNEL=="2-1.4", ATTR{authorized}="0"

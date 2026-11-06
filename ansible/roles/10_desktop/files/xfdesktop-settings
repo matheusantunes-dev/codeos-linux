@@ -1,0 +1,5 @@
+#!/bin/sh
+# Abre o xfdesktop-settings com o módulo do CodeOS, que acrescenta "Apply to all displays" ao seletor
+# de papel de parede (fonte: ansible/roles/10_desktop/files/codeos-desktop-settings.c).
+GTK_MODULES="/usr/local/lib/codeos/libcodeos-desktop-settings.so${GTK_MODULES:+:$GTK_MODULES}" \
+    exec /usr/bin/xfdesktop-settings "$@"

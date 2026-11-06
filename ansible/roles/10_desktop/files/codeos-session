@@ -1,0 +1,5 @@
+#!/bin/sh
+# Sessão CodeOS (Exec do /usr/share/xsessions/codeos.desktop). O picom sobe antes do Xfce: a barra
+# nasce invisível e só aparece inteira (módulo da barra), o que precisa do compositor já rodando.
+picom -b
+exec startxfce4

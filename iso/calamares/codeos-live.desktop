@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=CodeOS live session
+Comment=No screen lock or blanking while trying or installing CodeOS (live session only)
+Exec=sh -c "sleep 5; light-locker-command --quit; xset s off -dpms"
+NoDisplay=true

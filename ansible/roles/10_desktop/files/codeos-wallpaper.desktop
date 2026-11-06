@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Papel de parede
+Name[en]=Wallpaper
+Comment=Escolher o papel de parede e aplicar em todas as telas
+Comment[en]=Choose the wallpaper and apply it to all displays
+Exec=codeos-wallpaper
+Icon=preferences-desktop-wallpaper
+Categories=Settings;DesktopSettings;X-XFCE-SettingsDialog;X-XFCE-PersonalSettings;
+OnlyShowIn=XFCE;
+StartupNotify=true

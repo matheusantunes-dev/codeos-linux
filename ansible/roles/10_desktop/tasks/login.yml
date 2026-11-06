@@ -1,0 +1,58 @@
+# A sessão CodeOS vira a padrão: arquivo de configuração do LightDM posterior ao 70-linuxmint.conf
+# (que fixa o Cinnamon) e a última sessão salva da sua conta no AccountsService.
+- name: Sessão CodeOS como padrão do LightDM
+  ansible.builtin.copy:
+    dest: /etc/lightdm/lightdm.conf.d/90-codeos.conf
+    content: |
+      # Gerenciado pelo CodeOS (ansible/roles/10_desktop); vem depois do 70-linuxmint.conf.
+      [Seat:*]
+      user-session={{ desktop_session }}
+      greeter-session=slick-greeter
+    mode: "0644"
+  become: true
+
+# Só o CodeOS na tela de login, como no Xubuntu e no Pop!_OS. A sessão "Xfce" simples usa as mesmas
+# configurações da conta sem os padrões do CodeOS e gravava por cima deles a barra e as janelas do Xfce
+# puro. O arquivo do pacote é desviado (dpkg-divert) para um nome que o LightDM não lê; o startxfce4
+# continua, é ele que abre a sessão CodeOS. Para emergências: terminal (Ctrl+Alt+F3) ou modo de recuperação.
+- name: Tirar a sessão "Xfce" simples da tela de login
+  ansible.builtin.command: >-
+    dpkg-divert --local --rename --divert /usr/share/xsessions/xfce.desktop.codeos-oculta
+    --add /usr/share/xsessions/xfce.desktop
+  args:
+    creates: /usr/share/xsessions/xfce.desktop.codeos-oculta
+  become: true
+
+- name: Ler a última sessão salva da sua conta
+  ansible.builtin.command:
+    argv: [busctl, get-property, org.freedesktop.Accounts, "/org/freedesktop/Accounts/User{{ ansible_user_uid }}",
+           org.freedesktop.Accounts.User, XSession]
+  register: desktop_xsession
+  changed_when: false
+  when: not codeos_imagem
+
+- name: Sessão CodeOS como a última usada da sua conta
+  ansible.builtin.command:
+    argv: [busctl, call, org.freedesktop.Accounts, "/org/freedesktop/Accounts/User{{ ansible_user_uid }}",
+           org.freedesktop.Accounts.User, SetXSession, s, "{{ desktop_session }}"]
+  become: true
+  when:
+    - not codeos_imagem
+    - desktop_xsession.stdout != 's "' ~ desktop_session ~ '"'
+  changed_when: true
+
+# marca horizontal de 40 px (assets/logo/build_greeter_logo.py): o slick-greeter não redimensiona a logo
+- name: Logo do CodeOS na tela de login
+  ansible.builtin.copy:
+    src: "{{ codeos_repo }}/assets/logo/codeos-greeter-logo.png"
+    dest: "{{ desktop_greeter_logo }}"
+    mode: "0644"
+  become: true
+
+- name: Tela de login com a cara do CodeOS
+  ansible.builtin.template:
+    src: slick-greeter.conf.j2
+    dest: /etc/lightdm/slick-greeter.conf
+    mode: "0644"
+    backup: true
+  become: true

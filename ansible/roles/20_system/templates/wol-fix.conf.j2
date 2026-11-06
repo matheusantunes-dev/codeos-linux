@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+# O wol-fix.service apontava para enp3s0, que não existe nesta máquina, e rodava antes da placa aparecer.
+[Unit]
+Requires=sys-subsystem-net-devices-{{ system_wol_interface }}.device
+After=sys-subsystem-net-devices-{{ system_wol_interface }}.device
+
+[Service]
+ExecStart=
+ExecStart=/sbin/ethtool -s {{ system_wol_interface }} wol g
+ExecStart=/bin/sh -c 'echo enabled > /sys/class/net/{{ system_wol_interface }}/device/power/wakeup'

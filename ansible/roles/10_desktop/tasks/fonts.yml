@@ -1,0 +1,23 @@
+- name: Baixar a Selawik
+  ansible.builtin.get_url:
+    url: "{{ desktop_selawik_url }}"
+    dest: "{{ codeos_cache }}/downloads/selawik.zip"
+    checksum: "sha256:{{ desktop_selawik_sha256 }}"
+    mode: "0644"
+
+- name: Pasta da fonte
+  ansible.builtin.file:
+    path: /usr/local/share/fonts/selawik
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Instalar a Selawik (só os .ttf)
+  ansible.builtin.unarchive:
+    src: "{{ codeos_cache }}/downloads/selawik.zip"
+    dest: /usr/local/share/fonts/selawik
+    remote_src: true
+    include: ["*.ttf"]
+    creates: /usr/local/share/fonts/selawik/selawk.ttf
+  become: true
+  notify: Atualizar o cache de fontes

@@ -1,0 +1,10 @@
+# Distribuição do Firefox no CodeOS (no lugar do distribution.ini do pacote da Mozilla, desviado com
+# dpkg-divert para distribution.ini.real): as preferências do pacote da Mozilla, com o nome do CodeOS.
+[Global]
+id=codeos
+version={{ codeos_version }}
+about=Mozilla Firefox for {{ codeos_name }}
+
+[Preferences]
+intl.locale.requested=""
+browser.gnome-search-provider.enabled=true

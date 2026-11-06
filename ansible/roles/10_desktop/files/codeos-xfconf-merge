@@ -1,0 +1,178 @@
+#!/usr/bin/env python3
+"""Leva os padrões novos do CodeOS para a sua conta sem apagar o que você personalizou.
+
+  codeos-xfconf-merge [--simular] /etc/xdg/xdg-codeos/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml ...
+
+Os padrões ficam nos arquivos do sistema (xdg-codeos); o xfconf usa o valor da sua conta quando ele
+existe e o do sistema quando não. Para cada propriedade dos padrões:
+  - sua conta não tem valor próprio, ou tem o mesmo do padrão novo: nada a fazer;
+  - o valor da sua conta é o padrão que o CodeOS aplicou da última vez (você não mexeu): o valor da conta
+    é removido e passa a valer o padrão novo;
+  - o valor da sua conta é diferente do último padrão: foi você que mudou, fica como está.
+Propriedades que só existem na sua conta (ex.: mostrar a Pasta pessoal na área de trabalho) nunca são
+tocadas. O último padrão aplicado fica em ~/.local/state/codeos/xfconf/<canal>.json; sem esse registro
+nada da conta é alterado (o apply roda --registrar com os padrões ainda instalados antes de trocá-los).
+Atalhos de teclado têm tratamento próprio (ver mesclar_atalhos).
+
+Precisa da sessão gráfica (xfconfd no D-Bus da sessão). O xfconfd guarda os padrões do sistema em memória:
+depois de mesclar, reinicie-o (pkill -TERM xfconfd grava o que está pendente e ele volta sozinho) e
+recarregue a barra, a área de trabalho e o xfsettingsd. Saída: os canais alterados, um por linha.
+"""
+import json
+import os
+import subprocess
+import sys
+import xml.etree.ElementTree as ET
+
+ESTADO = os.path.expanduser("~/.local/state/codeos/xfconf")
+SIMULAR = False  # --simular: só mostra o que mudaria
+
+
+def xfconf(*args):
+    if SIMULAR:
+        print("  xfconf-query", " ".join(args))
+        return
+    subprocess.run(["xfconf-query", *args], check=False)
+
+
+def padroes(arquivo):
+    """{caminho: [tipo, valor ou lista de valores]} de um arquivo de canal do xfconf."""
+    raiz = ET.parse(arquivo).getroot()
+    res = {}
+
+    def andar(no, base):
+        for p in no.findall("property"):
+            caminho = f"{base}/{p.get('name')}"
+            tipo = p.get("type")
+            if tipo == "array":
+                res[caminho] = ["array", [[v.get("type"), v.get("value")] for v in p.findall("value")]]
+            elif tipo != "empty":
+                res[caminho] = [tipo, p.get("value")]
+            andar(p, caminho)
+
+    andar(raiz, "")
+    return raiz.get("name"), res
+
+
+def normal(tipo, valor):
+    """Forma comparável de um valor (o xfconf-query imprime double com 6 casas, bool em minúsculas)."""
+    if tipo in ("double", "float"):
+        return f"{float(valor):.6f}"
+    if tipo == "bool":
+        return str(valor).lower()
+    return str(valor)
+
+
+def normal_padrao(item):
+    tipo, valor = item
+    if tipo == "array":
+        return [normal(t, v) for t, v in valor]
+    return normal(tipo, valor)
+
+
+def da_conta(canal, caminho, tipo):
+    r = subprocess.run(["xfconf-query", "-c", canal, "-p", caminho], capture_output=True, text=True)
+    if r.returncode != 0:
+        return None
+    saida = r.stdout.rstrip("\n")
+    if saida.startswith("Value is an array"):
+        return [linha.strip() for linha in saida.split("\n")[2:]]
+    return saida if tipo == "string" else saida.strip()
+
+
+def gravar(canal, caminho, item):
+    tipo, valor = item
+    if tipo == "array":
+        args = [a for t, v in valor for a in ("-t", t, "-s", v)]
+        xfconf("-c", canal, "-p", caminho, "-n", "-a", *args)
+    else:
+        xfconf("-c", canal, "-p", caminho, "-n", "-t", tipo, "-s", valor)
+
+
+def mesclar_atalhos(canal, antigos, novos):
+    """Atalhos: o xfsettingsd copia os padrões para /<provedor>/custom (override=true) e daí em diante só
+    a cópia vale. Atalho que ainda está como no padrão antigo segue o novo; atalho novo entra se a tecla
+    estiver livre; atalho que saiu do padrão sai da cópia; o que você mudou fica."""
+    mudou = False
+    for prov in ("commands", "xfwm4"):
+        if da_conta(canal, f"/{prov}/custom/override", "bool") != "true":
+            continue
+        base = f"/{prov}/default/"
+        velhos = {c[len(base):]: v for c, v in antigos.items() if c.startswith(base)}
+        atuais = {c[len(base):]: v for c, v in novos.items() if c.startswith(base)}
+        for chave in sorted(set(velhos) | set(atuais)):
+            if velhos.get(chave) == atuais.get(chave):
+                continue
+            caminho = f"/{prov}/custom/{chave}"
+            tipo = (atuais.get(chave) or velhos.get(chave))[0]
+            conta = da_conta(canal, caminho, tipo)
+            if conta is None:
+                if chave in atuais and chave not in velhos:
+                    gravar(canal, caminho, atuais[chave])
+                    mudou = True
+            elif chave in velhos and conta == normal_padrao(velhos[chave]):
+                if chave in atuais:
+                    gravar(canal, caminho, atuais[chave])
+                else:
+                    xfconf("-c", canal, "-p", caminho, "-r")
+                mudou = True
+    return mudou
+
+
+def registrar(arquivo):
+    """Primeira vez: guarda os padrões instalados agora como 'os últimos aplicados', sem mexer na conta."""
+    canal, padrao = padroes(arquivo)
+    registro = os.path.join(ESTADO, f"{canal}.json")
+    if not os.path.exists(registro):
+        os.makedirs(ESTADO, exist_ok=True)
+        with open(registro, "w") as f:
+            json.dump(padrao, f, indent=1, ensure_ascii=False)
+
+
+def mesclar(arquivo):
+    canal, novos = padroes(arquivo)
+    registro = os.path.join(ESTADO, f"{canal}.json")
+    try:
+        with open(registro) as f:
+            antigos = json.load(f)
+    except (OSError, ValueError):
+        antigos = None
+
+    mudou = False
+    if antigos is not None:
+        for caminho, item in novos.items():
+            if caminho not in antigos or antigos[caminho] == item:
+                continue  # padrão igual ao anterior, ou propriedade nova (vale o padrão do sistema)
+            # o valor efetivo igual ao padrão antigo (e diferente do novo) é uma cópia que ficou na conta;
+            # sem valor próprio, o xfconfd ainda mostra o padrão antigo em memória e o -r não faz nada
+            atual = da_conta(canal, caminho, item[0])
+            if atual is None or atual == normal_padrao(item):
+                continue
+            if atual == normal_padrao(antigos[caminho]):
+                xfconf("-c", canal, "-p", caminho, "-r")
+                mudou = True
+        if canal == "xfce4-keyboard-shortcuts":
+            mudou = mesclar_atalhos(canal, antigos, novos) or mudou
+
+    if SIMULAR:
+        return canal if mudou else None
+    os.makedirs(ESTADO, exist_ok=True)
+    with open(registro + ".tmp", "w") as f:
+        json.dump(novos, f, indent=1, ensure_ascii=False)
+    os.replace(registro + ".tmp", registro)
+    return canal if mudou else None
+
+
+if __name__ == "__main__":
+    if sys.argv[1:2] == ["--registrar"]:
+        for arq in sys.argv[2:]:
+            if os.path.exists(arq):
+                registrar(arq)
+        sys.exit(0)
+    args = sys.argv[1:]
+    if args[:1] == ["--simular"]:
+        SIMULAR, args = True, args[1:]
+    for arq in args:
+        c = mesclar(arq)
+        if c:
+            print(c)
