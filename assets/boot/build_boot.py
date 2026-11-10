@@ -117,23 +117,42 @@ glow.sprite.SetOpacity(0);
 logo.sprite.SetOpacity(0);
 screen_w = 0;
 screen_h = 0;
+small_w = 0;
+small_h = 0;
 
 # No começo do boot a tela ainda está no modo genérico do firmware; quando o driver de vídeo
-# assume, a resolução muda. Por isso escala e centro são refeitos sempre que o tamanho muda,
-# e não só uma vez (com cálculo único o logo ficava fora do centro ao ligar).
+# assume, a resolução muda (e telas novas aparecem). Por isso escala e centro são refeitos sempre que
+# o tamanho muda, e não só uma vez (com cálculo único o logo ficava fora do centro ao ligar).
+#
+# Com várias telas o Plymouth desenha num quadro do tamanho da MAIOR delas e centraliza esse quadro em
+# cada tela. Então o centro certo é o meio desse quadro (w/2, h/2) — somar Window.GetX()/GetY() (o
+# recuo da menor tela) jogava o logo para a direita e para baixo em todas as telas quando elas
+# tinham resoluções diferentes. A escala vem da menor tela, para o logo caber em todas.
 fun layout()
   {{
     w = Window.GetWidth();
     h = Window.GetHeight();
-    if (w == global.screen_w && h == global.screen_h)
+    min_w = w;
+    min_h = h;
+    tela = 0;
+    while (Window.GetWidth(tela))
+      {{
+        if (Window.GetWidth(tela) < min_w) min_w = Window.GetWidth(tela);
+        if (Window.GetHeight(tela) < min_h) min_h = Window.GetHeight(tela);
+        tela++;
+      }}
+    # nomes locais (min_*, tela): um nome igual a uma global mudaria a global
+    if (w == global.screen_w && h == global.screen_h && min_w == global.small_w && min_h == global.small_h)
       return;
     global.screen_w = w;
     global.screen_h = h;
-    scale = h / {ref_h};
+    global.small_w = min_w;
+    global.small_h = min_h;
+    scale = min_h / {ref_h};
     global.logo.image = logo.source.Scale(logo.source.GetWidth() * scale, logo.source.GetHeight() * scale);
     global.glow.image = glow.source.Scale(glow.source.GetWidth() * scale, glow.source.GetHeight() * scale);
-    global.cx = Window.GetX() + w / 2;
-    global.cy = Window.GetY() + h / 2;
+    global.cx = w / 2;
+    global.cy = h / 2;
     glow.sprite.SetImage(glow.image);
     glow.sprite.SetPosition(cx - glow.image.GetWidth() / 2, cy - glow.image.GetHeight() / 2, 1);
     logo.sprite.SetImage(logo.image);
@@ -211,7 +230,7 @@ fun display_message_callback(text)
   {{
     m = Image.Text(text, 0.7, 0.7, 0.7);
     message.sprite.SetImage(m);
-    message.sprite.SetPosition(cx - m.GetWidth() / 2, Window.GetY() + Window.GetHeight() * 0.9, 10);
+    message.sprite.SetPosition(cx - m.GetWidth() / 2, cy + small_h * 0.4, 10);  # perto do pé da menor tela
     message.sprite.SetOpacity(1);
   }}
 
