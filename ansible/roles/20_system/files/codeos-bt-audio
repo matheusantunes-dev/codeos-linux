@@ -1,93 +1,43 @@
 #!/bin/bash
-# Áudio Bluetooth do CodeOS (serviço de usuário): devolve os fones que caíram e junta todas as saídas
-# Bluetooth numa só ("Fones Bluetooth (juntos)"), para dois fones tocarem o mesmo som.
+# Áudio Bluetooth do CodeOS (serviço de usuário): junta todas as saídas Bluetooth numa só ("Bluetooth
+# Headphones (combined)"), para dois fones tocarem o mesmo som ao mesmo tempo.
 #
-# Reconexão com calma: tentar conectar um fone desligado deixa o rádio chamando (page) por vários
-# segundos; repetir isso a cada 5 s mantinha o adaptador transmitindo quase sem parar, e com ele dentro
-# de um gabinete, colado nos hubs, a porta USB caía ("disabled by hub (EMI?)") e o firmware não
-# carregava. Agora só volta quem estava conectado: logo depois da queda, e depois a 10 s, 20 s, 40 s...
-# até 5 min entre tentativas, desistindo após 30 min (fone ligado de novo depois disso se conecta sozinho).
-# Os fones conectados ficam guardados para serem chamados também depois de reiniciar. Fone que fica
-# "conectado" sem o perfil de áudio depois de uma queda do adaptador tem a conexão refeita.
+# Fone só conecta (e desconecta) quando o usuário clica: este serviço não mexe em conexão nenhuma. Antes
+# ele reconectava os que caíam e os da sessão anterior, e refazia a conexão de um fone "conectado sem
+# áudio" — com dois fones isso derrubava o segundo: enquanto o WirePlumber ainda acertava o codec dele, o
+# serviço via o fone sem saída de som e o desconectava. O BlueZ também não reconecta sozinho
+# (ReconnectAttempts=0 em main.conf).
+#
+# A saída combinada (com compensação de atraso, para os fones ficarem juntos mesmo quando um responde
+# mais devagar) é refeita quando muda a lista de saídas Bluetooth, inclusive quando uma saída é
+# recriada com o mesmo nome (reinício do WirePlumber, fone que cai e volta): pelo nome o combine
+# continuava apontando para a saída antiga e o som parava.
 set -u
-SINK=fones_juntos_agora
-ESTADO=${XDG_STATE_HOME:-$HOME/.local/state}/codeos/bt-audio
-DESISTIR=1800
-ESPERA_MAX=300
+SINK=bluetooth_headphones_combined
+NOME_ANTIGO=fones_juntos_agora  # versões anteriores do CodeOS
+# o pipewire-pulse só aceita espaços no nome com as aspas de fora (') e as de dentro (") juntas
+DESCRICAO="Bluetooth Headphones (combined)"
 
-declare -A queda=() proxima=() espera=() sem_audio=()
-ultimo_sinks=""
-mkdir -p "${ESTADO%/*}"
+ultimo=""
 
-agendar() {  # $1 caiu agora: primeira tentativa já
-    queda[$1]=$(date +%s); proxima[$1]=0; espera[$1]=10
+combines() {  # módulos combine-sink deste serviço (o atual e o de versões anteriores)
+    pactl list short modules 2>/dev/null |
+        awk -v a="sink_name=$SINK" -v b="sink_name=$NOME_ANTIGO" \
+            '$2=="module-combine-sink" && (index($0,a) || index($0,b)) {print $1}'
 }
 
-# na partida, os fones da última sessão
-if [ -r "$ESTADO" ]; then
-    while read -r m; do [ -n "$m" ] && agendar "$m"; done <"$ESTADO"
-fi
-conectados_antes=""
-
 while true; do
-    agora=$(date +%s)
-    if timeout 5 bluetoothctl show 2>/dev/null | grep -q 'Powered: yes'; then
-        conectados=$(timeout 5 bluetoothctl devices Connected 2>/dev/null | awk '{print $2}' | sort)
-        # quem estava e saiu: reconectar
-        for m in $conectados_antes; do
-            grep -qx "$m" <<<"$conectados" || agendar "$m"
-        done
-        for m in $conectados; do unset "queda[$m]" "proxima[$m]" "espera[$m]"; done
-        # fone que volta depois de uma queda do adaptador pode ficar "conectado" sem o perfil de áudio (o
-        # A2DP falha no meio do caminho): sem saída de som por 10 s, desconecta e conecta de novo; se não
-        # adiantar, tenta outra vez a cada 1 min
-        cartoes=$(pactl list short cards 2>/dev/null)
-        for m in $conectados; do
-            if grep -q "bluez_card.${m//:/_}" <<<"$cartoes" \
-               || ! timeout 5 bluetoothctl info "$m" 2>/dev/null | grep -q 'Audio Sink'; then
-                unset "sem_audio[$m]"
-                continue
-            fi
-            sem_audio[$m]=$(( ${sem_audio[$m]:-0} + 5 ))
-            if (( sem_audio[$m] == 10 || (sem_audio[$m] > 10 && sem_audio[$m] % 60 == 10) )); then
-                echo "$m: conectado sem áudio, refazendo a conexão"
-                timeout 5 bluetoothctl disconnect "$m" >/dev/null 2>&1
-                sleep 2
-                timeout 12 bluetoothctl connect "$m" >/dev/null 2>&1 && echo "$m: áudio de volta"
-            fi
-        done
-        for m in "${!queda[@]}"; do
-            if (( agora - queda[$m] > DESISTIR )); then
-                echo "$m: sem resposta há 30 min, deixando de chamar"
-                unset "queda[$m]" "proxima[$m]" "espera[$m]"
-            elif (( agora >= proxima[$m] )); then
-                timeout 12 bluetoothctl connect "$m" >/dev/null 2>&1 && echo "$m: reconectado"
-                proxima[$m]=$(( $(date +%s) + espera[$m] ))
-                espera[$m]=$(( espera[$m] * 2 > ESPERA_MAX ? ESPERA_MAX : espera[$m] * 2 ))
-            fi
-        done
-        if [ "$conectados" != "$conectados_antes" ]; then
-            printf '%s\n' $conectados "${!queda[@]}" | sort -u | grep . >"$ESTADO.tmp"
-            mv "$ESTADO.tmp" "$ESTADO"
-        fi
-        conectados_antes=$conectados
-    else
-        # sem controlador (o codeos-bt-watchdog cuida dele): quando voltar, chamar todo mundo de novo
-        for m in $conectados_antes "${!queda[@]}"; do agendar "$m"; done
-        conectados_antes=""
-    fi
-
-    # saída combinada, recriada quando a lista de saídas Bluetooth muda
-    sinks=$(pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output\./ {print $2}' | sort | paste -sd,)
-    if [ "$sinks" != "$ultimo_sinks" ] || { [ -n "$sinks" ] && ! pactl list short sinks | grep -q "	$SINK	"; }; then
-        pactl list short modules | awk -v s="sink_name=$SINK" '$2=="module-combine-sink" && index($0,s) {print $1}' |
-            xargs -r -n1 pactl unload-module
-        if [ -n "$sinks" ]; then
+    # "id:nome" de cada saída Bluetooth: muda quando entra ou sai um fone e quando uma saída é recriada
+    atual=$(pactl list short sinks 2>/dev/null | awk '$2 ~ /^bluez_output\./ {print $1 ":" $2}' | sort | paste -sd,)
+    if [ "$atual" != "$ultimo" ] || { [ -n "$atual" ] && ! pactl list short sinks | grep -q "	$SINK	"; }; then
+        combines | xargs -r -n1 pactl unload-module
+        if [ -n "$atual" ]; then
+            nomes=$(tr ',' '\n' <<<"$atual" | cut -d: -f2- | paste -sd,)
             pactl load-module module-combine-sink sink_name=$SINK \
-                sink_properties=device.description="Fones_Bluetooth_(juntos)" slaves="$sinks" adjust_time=1 >/dev/null &&
+                "sink_properties='device.description=\"$DESCRICAO\"'" slaves="$nomes" latency_compensate=yes >/dev/null &&
                 pactl set-default-sink $SINK
         fi
-        ultimo_sinks=$sinks
+        ultimo=$atual
     fi
     sleep 5
 done

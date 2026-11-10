@@ -1,5 +1,5 @@
 [Unit]
-Description=CodeOS: fones Bluetooth reconectados e tocando juntos
+Description=CodeOS: fones Bluetooth tocando juntos
 After=pipewire-pulse.service wireplumber.service
 
 [Service]

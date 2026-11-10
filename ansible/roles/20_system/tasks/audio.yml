@@ -36,6 +36,60 @@
     creates: /etc/systemd/user/default.target.wants/codeos-bt-audio.service
   become: true
 
+# Fones Bluetooth só para som: sem o perfil de chamada (HSP/HFP), um programa que pede microfone não
+# troca o fone para o modo chamada (som ruim e o fone saindo da saída combinada). O microfone fica sendo
+# o do computador ou outro fora dos fones. E a saída Bluetooth não é suspensa no silêncio (travava ao
+# voltar o som).
+- name: Pasta de ajustes do Bluetooth no WirePlumber
+  ansible.builtin.file:
+    path: /etc/wireplumber/bluetooth.lua.d
+    state: directory
+    mode: "0755"
+  become: true
+
+- name: Fones Bluetooth só para som e sem suspender
+  ansible.builtin.copy:
+    dest: "/etc/wireplumber/bluetooth.lua.d/{{ item.nome }}"
+    content: "{{ item.conteudo }}"
+    mode: "0644"
+  loop:
+    - nome: 51-codeos-fones-so-som.lua
+      conteudo: |
+        -- Gerenciado pelo CodeOS (ansible/roles/20_system/tasks/audio.yml).
+        -- Fones Bluetooth só com o perfil de música (A2DP e LE Audio), sem o de chamada (HSP/HFP).
+        bluez_monitor.properties["bluez5.roles"] = "[ a2dp_sink a2dp_source bap_sink bap_source ]"
+    - nome: 52-codeos-bt-sem-suspender.lua
+      conteudo: |
+        -- Gerenciado pelo CodeOS (ansible/roles/20_system/tasks/audio.yml).
+        -- Não suspender a saída Bluetooth quando fica em silêncio (evita travadas ao retomar o áudio).
+        table.insert(bluez_monitor.rules, {
+          matches = { { { "node.name", "matches", "bluez_output.*" } } },
+          apply_properties = {
+            ["session.suspend-timeout-seconds"] = 0,
+            ["node.pause-on-idle"] = false,
+          },
+        })
+  loop_control:
+    label: "{{ item.nome }}"
+  become: true
+
+# Fone só conecta quando o usuário clica: o BlueZ não tenta reconectar depois de uma queda (o padrão é
+# 7 tentativas). Vale a partir do próximo boot ou reinício do bluetooth (não reiniciado aqui: derrubaria
+# os fones conectados).
+- name: Bluetooth sem reconexão automática
+  ansible.builtin.lineinfile:
+    path: /etc/bluetooth/main.conf
+    regexp: '^#?\s*ReconnectAttempts\s*='
+    line: ReconnectAttempts=0
+    insertafter: '^\[Policy\]'
+  become: true
+
+- name: Tirar a lista de fones para reconectar das versões anteriores
+  ansible.builtin.file:
+    path: "{{ codeos_home }}/.local/state/codeos/bt-audio"
+    state: absent
+  when: not codeos_imagem
+
 # O fones-vigia provisório chamava os fones desligados a cada 5 s e derrubava o adaptador.
 - name: Desligar o fones-vigia provisório da sua conta
   ansible.builtin.file:
