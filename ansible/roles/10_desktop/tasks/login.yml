@@ -8,7 +8,18 @@
       [Seat:*]
       user-session={{ desktop_session }}
       greeter-session=slick-greeter
+      display-setup-script=/usr/local/sbin/codeos-greeter-telas
     mode: "0644"
+  become: true
+
+# Monitores da tela de login no mesmo arranjo da sessão (como o GDM copia o monitors.xml da conta):
+# sem isto o notebook com NVIDIA mostrava o login num quadro menor, com a saída HDMI por cima. O
+# script chama antes o /sbin/prime-offload, o display-setup-script que o nvidia-prime põe no LightDM.
+- name: Arranjo dos monitores na tela de login
+  ansible.builtin.copy:
+    src: codeos-greeter-telas
+    dest: /usr/local/sbin/codeos-greeter-telas
+    mode: "0755"
   become: true
 
 # Só o CodeOS na tela de login, como no Xubuntu e no Pop!_OS. A sessão "Xfce" simples usa as mesmas
