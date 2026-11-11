@@ -48,10 +48,11 @@
     state: present
   become: true
 
-# Placa de vídeo do Firefox (notebook com Intel + NVIDIA no on-demand): sem isto ele sempre roda na
-# Intel, que usa a RAM do sistema como memória de vídeo (o GeoFS no gráfico máximo esgotou os 32 GB e
-# travou o Nitro). O codeos-gpu escolhe a placa ao abrir: na tomada NVIDIA, na bateria Intel. O
-# /usr/local/bin/firefox vem antes de /usr/bin no PATH, então vale para menu, barra, links e terminal.
+# Placa de vídeo do Firefox (notebook com Intel + NVIDIA no on-demand). Abre na Intel: na NVIDIA cada
+# quadro volta para a Intel por uma cópia entre as placas, e no Nitro isso travava a interface e o
+# mouse por 1–2 s. Para jogos pesados no navegador (a Intel usa a RAM do sistema como memória de vídeo:
+# o GeoFS no máximo esgotou os 32 GB), "Open with NVIDIA" no menu. O /usr/local/bin/firefox vem antes
+# de /usr/bin no PATH, então vale para menu, barra, links e terminal.
 - name: Escolha da placa de vídeo ao abrir programas (codeos-gpu) e Firefox por ela
   ansible.builtin.copy:
     src: "{{ item.src }}"

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Faz, como administrador via pkexec (ação org.codeos.welcome.install), o que a tela de boas-vindas
-# (codeos-welcome) oferece: instalar os extras e editores e ligar o Docker sem sudo da própria conta. Só
+# (codeos-welcome) oferece: instalar os extras, o driver da NVIDIA e editores e ligar o Docker sem sudo da própria conta. Só
 # aceita os itens da lista abaixo, nada passado de fora.
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
@@ -14,6 +14,11 @@ case "${1:-}" in
         # a tela de boas-vindas mostrou a licença da Microsoft e a pessoa aceitou
         echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
         apt_instalar ttf-mscorefonts-installer ;;
+    nvidia)
+        # como o "Drivers adicionais" do Ubuntu: o ubuntu-drivers escolhe o driver recomendado para a
+        # placa e prefere os módulos já assinados pela Canonical (funcionam com o Secure Boot ligado)
+        apt-get update
+        ubuntu-drivers install ;;
     kdeconnect) apt_instalar kdeconnect ;;
     solaar)     apt_instalar solaar ;;
     bottles)    flatpak install -y --system --noninteractive flathub com.usebottles.bottles ;;

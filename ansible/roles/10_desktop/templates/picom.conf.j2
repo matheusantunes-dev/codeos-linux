@@ -1,6 +1,7 @@
 # {{ ansible_managed }}
 # Efeitos da sessão CodeOS (picom 10). Para personalizar, copie para ~/.config/picom/picom.conf.
-# xrender: não depende de OpenGL; com glx, menus e janelas saíam transparentes em alguns drivers
+# xrender aqui; a sessão (codeos-session) troca para glx nas placas atuais (iris, radeonsi, NVIDIA):
+# com glx, menus e janelas saíam transparentes nas antigas (Intel HD 4000)
 backend = "xrender";
 vsync = true;
 use-damage = true;

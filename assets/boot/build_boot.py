@@ -9,6 +9,7 @@ Nada é instalado: o tema Plymouth é outro passo, depois da aprovação da pré
 Uso: python3 assets/boot/build_boot.py      (saída em assets/boot/build/)
 """
 import math
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -286,6 +287,11 @@ def main():
         sys.exit(f"ERRO: o brilho recortado {bbox} não está centrado; o script do Plymouth assume que está.")
     write_plymouth_theme(plymouth)
     print(f"tema Plymouth em {plymouth} (glow recortado em {bbox})")
+
+    # a prévia em vídeo é só para ver a animação (README); o tema acima é o que vai para o sistema
+    if shutil.which("ffmpeg") is None:
+        print("prévia (MP4/GIF) pulada: ffmpeg não está instalado")
+        return
 
     logo_pos = ((W - LOGO_PX) // 2, (H - LOGO_PX) // 2)
     black = Image.new("RGB", (W, H), (0, 0, 0))
