@@ -6,6 +6,7 @@ desmarcar "Show at startup", e pelo menu a qualquer hora. Tem os atalhos princip
 escuro, papel de parede e extras opcionais. Os extras são instalados pelo codeos-welcome-helper, com a
 senha de administrador pedida pela janela padrão do sistema (pkexec).
 """
+import glob
 import locale
 import os
 import subprocess
@@ -50,6 +51,13 @@ ATALHOS = [
 
 # extras opcionais: (id do ajudante, ícone, nome, descrição, como saber se já está instalado)
 EXTRAS = [
+    ("nvidia", "video-display",
+     t("NVIDIA graphics driver", "Driver da placa de vídeo NVIDIA"),
+     t("The official NVIDIA driver recommended for this computer (games, CUDA, external monitors on "
+       "the NVIDIA port). Signed for Secure Boot. Restart after installing.",
+       "O driver oficial da NVIDIA recomendado para este computador (jogos, CUDA, monitores na saída "
+       "da NVIDIA). Assinado para o Secure Boot. Reinicie depois de instalar."),
+     ("nvidia", "nvidia-driver")),
     ("ms-fonts", "preferences-desktop-font",
      t("Microsoft fonts", "Fontes da Microsoft"),
      t("Arial, Times New Roman, Verdana, Courier New and others, from Microsoft's free core fonts.",
@@ -137,8 +145,27 @@ def gravar_mostrar_ao_iniciar(sim):
         f.write("autostart=true\n" if sim else "autostart=false\n")
 
 
+def tem_nvidia():
+    """Placa de vídeo NVIDIA no PCI (fabricante 0x10de, classe de vídeo 0x03xxxx)."""
+    for disp in glob.glob("/sys/bus/pci/devices/*"):
+        try:
+            with open(disp + "/vendor") as v, open(disp + "/class") as c:
+                if v.read().strip() == "0x10de" and c.read().strip().startswith("0x03"):
+                    return True
+        except OSError:
+            pass
+    return False
+
+
 def instalado(como):
     tipo, nome = como
+    if tipo == "nvidia":
+        # driver carregado, ou pacote instalado esperando o reinício
+        if os.path.isdir("/proc/driver/nvidia/gpus"):
+            return True
+        r = subprocess.run(["dpkg-query", "-W", "-f=${Package} ${Status}\\n", "nvidia-driver-*"],
+                           capture_output=True, text=True)
+        return any(l.endswith("install ok installed") for l in r.stdout.splitlines())
     if tipo == "deb":
         r = subprocess.run(["dpkg-query", "-W", "-f=${Status}", nome], capture_output=True, text=True)
         return "install ok installed" in r.stdout
@@ -307,7 +334,10 @@ class BoasVindas(Gtk.Window):
         lista = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, margin_top=8)
         lista.get_style_context().add_class("frame")
         logitech = logitech_conectado()
+        nvidia = tem_nvidia()
         for ident, icone, nome, desc, como in EXTRAS:
+            if ident == "nvidia" and not nvidia:
+                continue
             if ident == "solaar" and logitech:
                 desc += t(" A Logitech device is connected now.", " Há um aparelho Logitech conectado agora.")
             lista.add(self.linha_extra(ident, icone, nome, desc, como))
@@ -560,6 +590,10 @@ class BoasVindas(Gtk.Window):
                 saida = e.message
             if instalado(como):
                 direita.set_visible_child_name("pronto")
+                if ident == "nvidia":
+                    self.aviso(t("Restart to finish", "Reinicie para terminar"),
+                               t("The NVIDIA driver starts working after the computer restarts.",
+                                 "O driver da NVIDIA passa a funcionar depois que o computador reiniciar."))
             else:
                 direita.set_visible_child_name("botao")
                 # 126/127: a pessoa cancelou a senha; aí não é erro
@@ -581,6 +615,13 @@ class BoasVindas(Gtk.Window):
         resposta = d.run()
         d.destroy()
         return resposta == Gtk.ResponseType.ACCEPT
+
+    def aviso(self, titulo, texto):
+        d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.INFO,
+                              buttons=Gtk.ButtonsType.CLOSE, text=titulo)
+        d.format_secondary_text(texto)
+        d.run()
+        d.destroy()
 
     def erro(self, nome, detalhe):
         d = Gtk.MessageDialog(transient_for=self, modal=True, message_type=Gtk.MessageType.ERROR,

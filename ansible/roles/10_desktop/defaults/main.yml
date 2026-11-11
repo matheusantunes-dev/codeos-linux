@@ -35,6 +35,7 @@ desktop_packages:
   - atril                   # leitor de PDF (no lugar do xreader)
   - slick-greeter           # tela de login do CodeOS (o Xubuntu traz o lightdm-gtk-greeter)
   - light-locker            # bloqueio de tela pela própria tela de login (Super+L, suspender, trocar usuário)
+  - ubuntu-drivers-common   # driver da NVIDIA pela tela de boas-vindas (o mesmo do "Drivers adicionais")
   - flatpak                 # loja Flathub (Bottles, Zed na tela de boas-vindas), como no Mint, Pop!_OS e Zorin
   - wsdd                    # descoberta de computadores Windows/Samba na rede (Thunar > Rede)
   - papirus-icon-theme      # o tema CodeOS herda dele
