@@ -1,9 +1,52 @@
 # CodeOS
 
-Distro para desenvolvedores construída por cima do Linux Mint: Xfce no estilo Windows, áudio Bluetooth duplo,
-luz noturna por monitor, USB estável e storage inteligente. A mesma fonte gera a configuração do notebook e a ISO.
+**A Linux desktop for developers that feels familiar to Windows users.** Based on Ubuntu 24.04 LTS
+(Xubuntu), with an Xfce desktop styled like Windows and developer tools ready out of the box.
 
-## Estrutura
+*Uma distro Linux para desenvolvedores, com cara de Windows. Baseada no Ubuntu 24.04 LTS (Xubuntu).*
+
+## Features
+
+- **Windows-style desktop:** taskbar at the bottom, Start menu, pinned apps, window previews, Windows
+  shortcuts (Super+E, Super+L, Super+Shift+S screenshot to clipboard, Super+V clipboard history),
+  Fluent theme and Selawik font, 12 landscape wallpapers.
+- **Developer tools:** git, gh, ripgrep, fzf, bat, btop, mise (Node, Python, Go, Rust, Java per
+  project), Docker on demand, Podman and Distrobox. The welcome screen sets up Git, SSH keys, GitHub,
+  languages and editors.
+- **Everyday apps:** Firefox, LibreOffice, VLC, archive manager, disks, printers and scanner;
+  Windows programs (.exe/.msi) open with a double click through Wine.
+- **Hardware:** NVIDIA driver from the welcome screen (Secure Boot ready), per-app GPU choice for
+  laptops with Intel + NVIDIA, night light per monitor, two Bluetooth headphones playing together.
+- **Updates:** system updates through apt, plus a signed CodeOS repository that brings new versions of
+  the desktop configuration without overwriting your own changes.
+
+## Install
+
+1. Download the ISO from the [latest release](https://github.com/matheusantunes-dev/codeos-linux/releases/latest)
+   and check it against the `SHA256SUMS` file published with it.
+2. Write it to a USB drive (8 GB or more) with [Ventoy](https://www.ventoy.net), balenaEtcher or Rufus.
+3. Boot from the USB drive. Try the live session, then click **Install CodeOS** on the desktop.
+
+**Requirements:** 64-bit PC (UEFI with or without Secure Boot, or legacy BIOS), 2 GB of RAM (8 GB
+recommended) and 20 GB of disk.
+
+**Advanced:** on an existing Linux Mint 22 or Xubuntu 24.04 install, the `codeos` package applies the
+CodeOS configuration without reinstalling ([packages/README.md](packages/README.md), in Portuguese).
+
+## Status
+
+CodeOS is a personal project in **beta**: it is used daily on two laptops (Intel, and Intel +
+NVIDIA) and the ISO is tested in virtual machines. Bug reports and suggestions are welcome in
+[Issues](https://github.com/matheusantunes-dev/codeos-linux/issues).
+
+---
+
+## Desenvolvimento
+
+A mesma fonte (Ansible) configura as máquinas do autor e gera a ISO. O resto deste documento é para
+quem desenvolve o CodeOS.
+
+### Estrutura
 
 | Pasta | Conteúdo |
 |---|---|
@@ -12,10 +55,10 @@ luz noturna por monitor, USB estável e storage inteligente. A mesma fonte gera 
 | `ansible/` | Playbook local, um role por módulo (`--tags` por módulo, sempre `--check --diff` antes). |
 | `packages/` | Pacote `codeos` e repositório APT assinado: as atualizações chegam a quem já instalou ([packages/README.md](packages/README.md)). |
 | `assets/` | Logo, ícones e wallpapers em SVG. |
-| `iso/` | Receita do Cubic e testes em QEMU. |
+| `iso/` | `construir.sh`: monta a ISO a partir da do Xubuntu 24.04 (instalador Calamares). |
 | `docs/` | Decisões de arquitetura. |
 
-## Auditoria
+### Auditoria
 
 Rode de um terminal da sua sessão gráfica, sem sudo:
 
@@ -25,7 +68,7 @@ Rode de um terminal da sua sessão gráfica, sem sudo:
 
 `--root-extras` acrescenta SMART, lista de snapshots do Timeshift e LVM (pede sudo só para isso).
 
-## Backup (Módulo 0)
+### Backup (Módulo 0)
 
 Pré-requisito de todos os outros módulos. Com o HDD externo conectado, uma vez:
 
@@ -39,7 +82,7 @@ Pré-requisito de todos os outros módulos. Com o HDD externo conectado, uma vez
 
 Depois, antes de cada módulo: `run` + `verify`. Como restaurar: [docs/restauracao.md](docs/restauracao.md).
 
-## Módulos (Ansible)
+### Módulos (Ansible)
 
 Uma vez: `sudo apt install ansible-core`. Todo módulo exige backup verificado nas últimas 24 h e cria
 um snapshot do Timeshift antes de mudar qualquer coisa (o HDD externo precisa estar conectado).
@@ -64,7 +107,7 @@ Para montar o sistema da ISO (num chroot, sem sessão e sem conta de pessoa): `a
 
 Para ver a sessão CodeOS sem sair da sua (por exemplo, pelo AnyDesk): `./ansible/testar-sessao.sh`.
 
-## Identidade visual
+### Identidade visual
 
 ```bash
 python3 assets/icons/build.py
