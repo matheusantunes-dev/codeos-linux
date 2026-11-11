@@ -1,0 +1,141 @@
+#!/usr/bin/python3
+"""Arranjo dos monitores na tela de login (display-setup-script do LightDM, roda como root).
+
+Sem isto o X da tela de login liga cada monitor do jeito dele: no Nitro a saída HDMI da NVIDIA
+(reverse PRIME) entra depois, em 0,0, por cima da tela do notebook, e o login aparece num quadro
+menor no notebook. Como o GDM do GNOME (que copia o monitors.xml da conta para a tela de login),
+aplica aqui o arranjo que o Xfce guardou da conta usada por último (displays.xml): posição,
+resolução, tela principal e telas desligadas. Monitor que a conta não conhece entra à direita, sem
+sobrepor nenhum.
+
+Antes, chama o /sbin/prime-offload do Ubuntu (o display-setup-script que o nvidia-prime instala),
+que liga as saídas da NVIDIA no modo on-demand.
+"""
+import glob
+import os
+import re
+import subprocess
+import time
+import xml.etree.ElementTree as ET
+
+LOG = "/var/log/codeos-greeter-telas.log"
+PRIME = "/sbin/prime-offload"
+
+
+def log(msg):
+    try:
+        with open(LOG, "a") as f:
+            f.write(time.strftime("%F %T ") + msg + "\n")
+    except OSError:
+        pass
+
+
+def xrandr(*args):
+    r = subprocess.run(["xrandr", *args], capture_output=True, text=True)
+    return r.returncode, r.stdout, r.stderr.strip()
+
+
+def conectadas():
+    """{saída: [modos]} das saídas conectadas."""
+    _, out, _ = xrandr("--query")
+    saidas, atual = {}, None
+    for linha in out.splitlines():
+        m = re.match(r"(\S+) connected", linha)
+        if m:
+            atual = m.group(1)
+            saidas[atual] = []
+        elif re.match(r"\S", linha):
+            atual = None
+        elif atual:
+            modo = linha.split()[0]
+            if re.match(r"\d+x\d+", modo):
+                saidas[atual].append(modo)
+    return saidas
+
+
+def perfil_da_conta():
+    """Saídas do perfil ativo do displays.xml mais recente entre as contas."""
+    arquivos = glob.glob("/home/*/.config/xfce4/xfconf/xfce-perchannel-xml/displays.xml")
+    if not arquivos:
+        return {}
+    arquivo = max(arquivos, key=os.path.getmtime)
+    try:
+        raiz = ET.parse(arquivo).getroot()
+    except (ET.ParseError, OSError) as e:
+        log(f"não li {arquivo}: {e}")
+        return {}
+    filhos = {p.get("name"): p for p in raiz.findall("property")}
+    ativo = filhos.get("ActiveProfile")
+    perfil = filhos.get(ativo.get("value") if ativo is not None else "Default") or filhos.get("Default")
+    if perfil is None:
+        return {}
+    saidas = {}
+    for s in perfil.findall("property"):
+        props = {p.get("name"): p for p in s.findall("property")}
+
+        def valor(nome, padrao=None):
+            p = props.get(nome)
+            return p.get("value") if p is not None else padrao
+
+        pos = {p.get("name"): p.get("value") for p in props["Position"].findall("property")} \
+            if "Position" in props else {}
+        saidas[s.get("name")] = {
+            "ativa": valor("Active", "true") == "true",
+            "modo": valor("Resolution"),
+            "principal": valor("Primary", "false") == "true",
+            "x": int(pos.get("X", 0)),
+            "y": int(pos.get("Y", 0)),
+        }
+    log(f"perfil de {arquivo}")
+    return saidas
+
+
+def main():
+    if os.access(PRIME, os.X_OK):
+        subprocess.run([PRIME])
+    # as saídas da NVIDIA aparecem logo depois do prime-offload: espera a lista parar de mudar
+    antes, saidas = None, {}
+    for _ in range(20):
+        saidas = conectadas()
+        if saidas == antes:
+            break
+        antes = saidas
+        time.sleep(0.25)
+    if not saidas:
+        return
+    perfil = perfil_da_conta()
+
+    args, principal, direita = [], None, 0
+    planejadas = []
+    for nome, modos in saidas.items():
+        p = perfil.get(nome)
+        if p and not p["ativa"]:
+            args += ["--output", nome, "--off"]
+            continue
+        if p and p["modo"] in modos:
+            planejadas.append((nome, p["modo"], p["x"], p["y"]))
+            direita = max(direita, p["x"] + int(p["modo"].split("x")[0]))
+            if p["principal"] and principal is None:
+                principal = nome
+        else:
+            planejadas.append((nome, None, None, None))
+    for nome, modo, x, y in planejadas:
+        args += ["--output", nome]
+        if modo:
+            args += ["--mode", modo, "--pos", f"{x}x{y}"]
+        else:  # a conta não conhece este monitor: modo preferido, à direita dos outros
+            preferido = saidas[nome][0] if saidas[nome] else None
+            args += ["--auto", "--pos", f"{direita}x0"]
+            if preferido:
+                direita += int(preferido.split("x")[0])
+        if nome == principal:
+            args.append("--primary")
+    codigo, _, erro = xrandr(*args)
+    log(f"xrandr {' '.join(args)} -> {codigo} {erro}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:  # a tela de login nunca pode deixar de abrir por causa disto
+        log(f"erro: {e!r}")
