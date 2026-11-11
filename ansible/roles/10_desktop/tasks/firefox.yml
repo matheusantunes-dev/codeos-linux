@@ -47,3 +47,36 @@
     name: firefox-l10n-pt-br
     state: present
   become: true
+
+# Placa de vídeo do Firefox (notebook com Intel + NVIDIA no on-demand): sem isto ele sempre roda na
+# Intel, que usa a RAM do sistema como memória de vídeo (o GeoFS no gráfico máximo esgotou os 32 GB e
+# travou o Nitro). O codeos-gpu escolhe a placa ao abrir: na tomada NVIDIA, na bateria Intel. O
+# /usr/local/bin/firefox vem antes de /usr/bin no PATH, então vale para menu, barra, links e terminal.
+- name: Escolha da placa de vídeo ao abrir programas (codeos-gpu) e Firefox por ela
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "0755"
+  loop:
+    - { src: codeos-gpu, dest: /usr/local/bin/codeos-gpu }
+    - { src: firefox-codeos-gpu, dest: /usr/local/bin/firefox }
+  become: true
+
+# "Open with NVIDIA" / "Open with Intel" no botão direito do Firefox no menu (como o "Launch using
+# Discrete Graphics Card" do GNOME). Feito a cada apply a partir do atalho do pacote, para seguir as
+# atualizações do Firefox. A escolha vale ao abrir o Firefox: com ele já aberto, a janela nova entra
+# no processo que já existe, na placa dele.
+- name: Firefox com opções de placa de vídeo no menu
+  ansible.builtin.shell: |
+    orig=/usr/share/applications/firefox.desktop
+    dest=/usr/share/codeos/applications/firefox.desktop
+    { sed -e '0,/^Actions=/s/^Actions=\(.*\)$/Actions=\1codeos-nvidia;codeos-intel;/' "$orig"
+      printf '\n[Desktop Action codeos-nvidia]\nName=Open with NVIDIA\nExec=codeos-gpu --nvidia /usr/bin/firefox --new-window %%u\n'
+      printf '\n[Desktop Action codeos-intel]\nName=Open with Intel\nExec=codeos-gpu --intel /usr/bin/firefox --new-window %%u\n'
+    } > "$dest.novo"
+    if cmp -s "$dest.novo" "$dest"; then rm -f "$dest.novo"; else chmod 644 "$dest.novo"; mv "$dest.novo" "$dest"; echo mudou; fi
+  args:
+    removes: /usr/share/applications/firefox.desktop
+  become: true
+  register: desktop_firefox_gpu
+  changed_when: "'mudou' in desktop_firefox_gpu.stdout"
