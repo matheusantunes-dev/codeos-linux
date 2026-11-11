@@ -44,6 +44,19 @@ desktop_packages:
   - fonts-crosextra-caladea # mesmas medidas da Cambria
   - p7zip-full              # .7z no botão direito do Thunar
   - unrar                   # .rar (do multiverse, como no ubuntu-restricted-extras)
+  - engrampa                # abrir e extrair .zip/.7z/.rar (o Xubuntu traz; o plugin do Thunar usa ele)
+  - lzip                    # .lz no Engrampa
+  - cabextract              # .cab do Windows
+  - vlc                     # player de vídeo e música
+  - gnome-disk-utility      # Disks: formatar pendrive, ver e montar HDs
+  - baobab                  # Disk Usage Analyzer: o que ocupa espaço
+  - system-config-printer   # impressoras
+  - simple-scan             # Document Scanner
+  - gnome-font-viewer       # ver e instalar fontes com dois cliques
+  - libreoffice-writer      # Office: texto (abre .docx)
+  - libreoffice-calc        # planilhas (.xlsx)
+  - libreoffice-impress     # apresentações (.pptx)
+  - libreoffice-gtk3        # visual igual ao resto do sistema
   - wine                    # programas do Windows (.exe e .msi abrem com dois cliques)
   - gpick                   # seletor de cor (Super+Shift+C)
   - tesseract-ocr           # copiar texto da tela (Super+Shift+T), inglês
