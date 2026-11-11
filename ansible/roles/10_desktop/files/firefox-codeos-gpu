@@ -1,0 +1,4 @@
+#!/bin/sh
+# Gerenciado pelo CodeOS (ansible/roles/10_desktop/tasks/firefox.yml): vem antes de /usr/bin no PATH,
+# então menu, barra de tarefas, links e terminal abrem o Firefox pela placa escolhida pelo codeos-gpu.
+exec /usr/local/bin/codeos-gpu /usr/bin/firefox "$@"
