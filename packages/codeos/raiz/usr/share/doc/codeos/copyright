@@ -1,0 +1,21 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: CodeOS
+Upstream-Contact: Matheus Antunes Reis
+Source: https://github.com/matheusantunes-dev/codeos-linux
+
+Files: *
+Copyright: 2026 Matheus Antunes Reis
+License: GPL-3.0-or-later
+
+Files: assets/wallpapers/*
+Copyright: the photographers listed in assets/wallpapers/CREDITS.md (Wikimedia Commons)
+License: CC0-1.0 or CC-BY-4.0 or CC-BY-SA-4.0, per file (see CREDITS.md)
+
+Files: assets/icons/src/raster/*
+Copyright: Linux Mint (mint-l-icons)
+License: CC-BY-SA-4.0
+Comment: recolored; the rest of the CodeOS icon theme inherits Papirus (GPL-3.0) without copying it.
+
+License: GPL-3.0-or-later
+ On Debian systems, the complete text of the GNU General Public License version 3 can be found in
+ /usr/share/common-licenses/GPL-3.
