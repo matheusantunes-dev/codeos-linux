@@ -1,4 +1,7 @@
 #!/bin/sh
-# Gerenciado pelo CodeOS (ansible/roles/10_desktop/tasks/firefox.yml): vem antes de /usr/bin no PATH,
-# então menu, barra de tarefas, links e terminal abrem o Firefox pela placa escolhida pelo codeos-gpu.
-exec /usr/local/bin/codeos-gpu /usr/bin/firefox "$@"
+# Gerenciado pelo CodeOS (ansible/roles/10_desktop/tasks/firefox.yml): vem antes de /usr/bin no PATH.
+# O Firefox abre na Intel: na NVIDIA (PRIME offload) cada quadro volta para a Intel por uma cópia
+# entre as placas, e no Nitro isso travava a interface e o mouse por 1–2 s (o Xorg preso no kernel).
+# Para jogos no navegador: botão direito no Firefox do menu > "Open with NVIDIA", ou
+# CODEOS_GPU=nvidia firefox (vale ao abrir o Firefox do zero).
+exec /usr/local/bin/codeos-gpu --${CODEOS_GPU:-intel} /usr/bin/firefox "$@"
