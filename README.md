@@ -81,3 +81,14 @@ Para usar o tema no boot (pede sudo; `uninstall` volta ao tema do Mint):
 ./assets/boot/install.sh install
 ./assets/boot/install.sh test
 ```
+
+## Licença
+
+O CodeOS é software livre sob a [GNU GPL 3.0 ou posterior](LICENSE): pode usar, estudar, modificar e
+redistribuir, desde que as versões redistribuídas sigam a mesma licença e tragam o código-fonte.
+
+Obras de terceiros mantêm as próprias licenças:
+
+- Papéis de parede: fotos do Wikimedia Commons sob CC0, CC BY ou CC BY-SA, com autor e licença de cada uma em [assets/wallpapers/CREDITS.md](assets/wallpapers/CREDITS.md).
+- Ícones: o tema herda o Papirus (GPL-3.0); os ícones de lixeira e discos são do mint-l-icons (CC BY-SA 4.0), recoloridos ([assets/icons/CREDITS.md](assets/icons/CREDITS.md)).
+- Tema Fluent (GPL-3.0) e fonte Selawik (OFL 1.1) são baixados das fontes oficiais durante a instalação, em versões fixadas e conferidas por checksum.
