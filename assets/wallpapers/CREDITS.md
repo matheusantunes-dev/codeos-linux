@@ -19,3 +19,13 @@ Ficaram de fora fotos cujos autores pedem restrições além da licença (por ex
 | `codeos-10-ama-dablam-sunset.jpg` | [Sunset on AmaDablam](https://commons.wikimedia.org/wiki/File:Sunset_on_AmaDablam.jpg) | Ummidnp | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
 | `codeos-11-chaistla-butte-dusk.jpg` | [Chaistla Butte at dusk, Navajo Nation, Arizona](https://commons.wikimedia.org/wiki/File:Chaistla_Butte_at_dusk,_Navajo_Nation,_Arizona.jpg) | Christian David | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
 | `codeos-12-vang-vieng-reflection.jpg` | [Water reflection of karst mountains at golden hour in Vang Vieng Laos](https://commons.wikimedia.org/wiki/File:Water_reflection_of_karst_mountains_at_golden_hour_in_Vang_Vieng_Laos.jpg) | Basile Morin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) |
+
+## Logo do CodeOS
+
+`codeos-13-logo-navy.jpg` a `codeos-22-logo-midnight-3d.jpg`: fundos abstratos com o logo do CodeOS no centro, plano e
+em 3D (3840x2160). Obra original do projeto, sob a mesma licença dele (GPL-3.0-or-later), gerada por
+[build_logo_wallpapers.py](build_logo_wallpapers.py):
+
+```bash
+python3 assets/wallpapers/build_logo_wallpapers.py
+```
