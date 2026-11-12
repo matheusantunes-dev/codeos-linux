@@ -9,7 +9,7 @@
 
 - **Windows-style desktop:** taskbar at the bottom, Start menu, pinned apps, window previews, Windows
   shortcuts (Super+E, Super+L, Super+Shift+S screenshot to clipboard, Super+V clipboard history),
-  Fluent theme and Selawik font, 12 landscape wallpapers.
+  Fluent theme and Selawik font, 12 landscape wallpapers plus 10 with the CodeOS logo (flat and 3D).
 - **Developer tools:** git, gh, ripgrep, fzf, bat, btop, mise (Node, Python, Go, Rust, Java per
   project), Docker on demand, Podman and Distrobox. The welcome screen sets up Git, SSH keys, GitHub,
   languages and editors.
@@ -98,7 +98,7 @@ O `apply.sh` pede a senha de administrador uma vez, confere no sudo e só então
 
 | Tag | Módulo | O que faz |
 |---|---|---|
-| `desktop` | 1 | Xfce estilo Windows numa sessão "CodeOS", a única da tela de login (o Cinnamon e a sessão Xfce simples saem): barra embaixo, menu iniciar com o logo, tema Fluent, fonte Selawik, ícones CodeOS, atalhos do Windows, programas fixados na barra de tarefas (botão direito → Pin to taskbar), prévia das janelas ao passar o mouse e marcação dos programas abertos, histórico da área de transferência (Super+V), seletor de cor (Super+Shift+C), copiar texto da tela (Super+Shift+T), janela sempre por cima (Ctrl+Super+T), terminal que desce do topo (Super+`), recorte de tela direto para o Ctrl+V (Super+Shift+S), tela de boas-vindas com extras opcionais, programas do Windows (.exe/.msi) com dois cliques pelo Wine, .rar e .7z no botão direito, fontes com as medidas das do Office, efeitos suaves (picom) e 12 papéis de parede de paisagens com luz quente |
+| `desktop` | 1 | Xfce estilo Windows numa sessão "CodeOS", a única da tela de login (o Cinnamon e a sessão Xfce simples saem): barra embaixo, menu iniciar com o logo, tema Fluent, fonte Selawik, ícones CodeOS, atalhos do Windows, programas fixados na barra de tarefas (botão direito → Pin to taskbar), prévia das janelas ao passar o mouse e marcação dos programas abertos, histórico da área de transferência (Super+V), seletor de cor (Super+Shift+C), copiar texto da tela (Super+Shift+T), janela sempre por cima (Ctrl+Super+T), terminal que desce do topo (Super+`), recorte de tela direto para o Ctrl+V (Super+Shift+S), tela de boas-vindas com extras opcionais, programas do Windows (.exe/.msi) com dois cliques pelo Wine, .rar e .7z no botão direito, fontes com as medidas das do Office, efeitos suaves (picom) e 22 papéis de parede: 12 paisagens com luz quente e 10 com o logo do CodeOS (plano e 3D) |
 | `system` | 2 | Boot centralizado nas duas telas desde o primeiro quadro (driver de vídeo no initramfs), USB sem economia de energia nos hubs, vigia que reconecta o adaptador Bluetooth quando ele trava, dois fones Bluetooth tocando juntos e reconectados sem sobrecarregar o rádio, Wake-on-LAN na placa certa, zram e limites de arquivos para IDEs; firewall ligado, SSH fechado e atualizações de segurança automáticas |
 | `dev` | 6 | Ferramentas de desenvolvimento para todo usuário: git, gh, jq, fd, fzf, bat, ripgrep, cmake, sqlite3, meld, pipx, btop; mise (versões de Node, Python, Go, Rust e Java por projeto); Docker ligado só no primeiro uso, Podman e Distrobox (outras distros integradas, como o WSL); earlyoom. Na tela de boas-vindas, a página "Developer" configura Git, chave SSH, GitHub, linguagens e editores |
 | `maquina` | — | Ajustes só de uma máquina, em `ansible/maquinas/<nome do computador>.yml` (este notebook: tela interna desligada, regras de dispositivos, ventoinha, AnyDesk). Em outra máquina e na ISO, nada dele vale |
@@ -132,6 +132,6 @@ redistribuir, desde que as versões redistribuídas sigam a mesma licença e tra
 
 Obras de terceiros mantêm as próprias licenças:
 
-- Papéis de parede: fotos do Wikimedia Commons sob CC0, CC BY ou CC BY-SA, com autor e licença de cada uma em [assets/wallpapers/CREDITS.md](assets/wallpapers/CREDITS.md).
+- Papéis de parede: as fotos são do Wikimedia Commons sob CC0, CC BY ou CC BY-SA, com autor e licença de cada uma em [assets/wallpapers/CREDITS.md](assets/wallpapers/CREDITS.md).
 - Ícones: o tema herda o Papirus (GPL-3.0); os ícones de lixeira e discos são do mint-l-icons (CC BY-SA 4.0), recoloridos ([assets/icons/CREDITS.md](assets/icons/CREDITS.md)).
 - Tema Fluent (GPL-3.0) e fonte Selawik (OFL 1.1) são baixados das fontes oficiais durante a instalação, em versões fixadas e conferidas por checksum.

@@ -7,3 +7,4 @@ assets/boot/build/
 __pycache__/
 *.pyc
 packages/build/
+assets/wallpapers/build/
