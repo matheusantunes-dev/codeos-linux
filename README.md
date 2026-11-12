@@ -54,7 +54,7 @@ quem desenvolve o CodeOS.
 | `backup/` | Módulo 0: `backup.sh` (restic do `/home`) e `timeshift-dest.sh` (Timeshift no HDD). Sem dependência do Ansible. |
 | `ansible/` | Playbook local, um role por módulo (`--tags` por módulo, sempre `--check --diff` antes). |
 | `packages/` | Pacote `codeos` e repositório APT assinado: as atualizações chegam a quem já instalou ([packages/README.md](packages/README.md)). |
-| `assets/` | Logo, ícones e wallpapers em SVG. |
+| `assets/` | Logo, ícones e papéis de parede (`wallpapers/codeos`: com o logo; `wallpapers/landscapes`: fotos). |
 | `iso/` | `construir.sh`: monta a ISO a partir da do Xubuntu 24.04 (instalador Calamares). |
 | `docs/` | Decisões de arquitetura. |
 
@@ -132,6 +132,6 @@ redistribuir, desde que as versões redistribuídas sigam a mesma licença e tra
 
 Obras de terceiros mantêm as próprias licenças:
 
-- Papéis de parede: as fotos são do Wikimedia Commons sob CC0, CC BY ou CC BY-SA, com autor e licença de cada uma em [assets/wallpapers/CREDITS.md](assets/wallpapers/CREDITS.md).
+- Papéis de parede: as fotos são do Wikimedia Commons sob CC0, CC BY ou CC BY-SA, com autor e licença de cada uma em [assets/wallpapers/landscapes/CREDITS.md](assets/wallpapers/landscapes/CREDITS.md); os com o logo do CodeOS são do próprio projeto (GPL-3.0).
 - Ícones: o tema herda o Papirus (GPL-3.0); os ícones de lixeira e discos são do mint-l-icons (CC BY-SA 4.0), recoloridos ([assets/icons/CREDITS.md](assets/icons/CREDITS.md)).
 - Tema Fluent (GPL-3.0) e fonte Selawik (OFL 1.1) são baixados das fontes oficiais durante a instalação, em versões fixadas e conferidas por checksum.

@@ -5,9 +5,9 @@ O logo é desenhado direto dos polígonos do codeos-logo.svg (mesmas coordenadas
 cada polígono (moldura, miolo e "</>"), gira, projeta em perspectiva e ilumina cada face (Lambert +
 brilho), desenhando de trás para a frente; embaixo vão sombra e reflexo.
 
-  python3 assets/wallpapers/build_logo_wallpapers.py   → assets/wallpapers/codeos-13..22-logo-*.jpg (3840x2160)
+  python3 assets/wallpapers/build_logo_wallpapers.py   → assets/wallpapers/codeos/codeos-logo-*.jpg (3840x2160)
 
-Saem direto em JPEG ao lado das fotos, porque o Ansible sincroniza só os *.jpg desta pasta.
+Saem direto em JPEG, porque o Ansible sincroniza os *.jpg da pasta para /usr/share/backgrounds/codeos.
 """
 import math
 import random
@@ -17,8 +17,7 @@ import cairo
 from PIL import Image, ImageFilter
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE
-PRIMEIRO = 13  # as fotos vão de 01 a 12
+OUT = HERE / "codeos"
 W, H = 3840, 2160
 
 CIANO = (0x05 / 255, 0xC0 / 255, 0xDF / 255)
@@ -312,7 +311,6 @@ def salvar(img, nome):
 
 
 def main():
-    n = PRIMEIRO
     fundos = {"navy": (navy, CIANO, 0.35), "waves": (ondas_azuis, CIANO, 0.25),
               "lowpoly": (poligonos, CIANO, 0.25), "light": (claro, AZUL, 0.18),
               "midnight": (meia_noite, CIANO, 0.30)}
@@ -328,12 +326,11 @@ def main():
         sombra = sombra.filter(ImageFilter.GaussianBlur(28))
         plano = Image.alpha_composite(Image.alpha_composite(base, sombra.transform(
             (W, H), Image.AFFINE, (1, 0, 0, 0, 1, -24))), logo)
-        salvar(plano, f"codeos-{n:02d}-logo-{nome}.jpg")
+        salvar(plano, f"codeos-logo-{nome}.jpg")
         # 3D
         cor_sombra = (10, 20, 50) if nome == "light" else (0, 0, 0)
         tres = compor_3d(base, W / 2, H * 0.46, H * 0.40, cor_sombra=cor_sombra)
-        salvar(tres, f"codeos-{n + 1:02d}-logo-{nome}-3d.jpg")
-        n += 2
+        salvar(tres, f"codeos-logo-{nome}-3d.jpg")
         print("ok:", nome)
 
 
