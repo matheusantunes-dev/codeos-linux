@@ -17,4 +17,12 @@ if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/picom/picom.conf" ]; then
 else
     picom -b --backend "$backend"
 fi
+# As fotos de paisagens saíram de /usr/share/backgrounds/codeos para codeos-landscapes (codeos ficou com os
+# papéis de parede do logo). Corrige o caminho salvo de quem usava uma delas, senão a área de trabalho fica
+# preta. Roda antes do Xfce, com o xfconfd ainda parado, e só mexe no arquivo quando acha o caminho velho.
+fundo="${XDG_CONFIG_HOME:-$HOME/.config}/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml"
+velho='/usr/share/backgrounds/codeos/\(codeos-\(0[1-9]\|1[0-2]\)-[a-z-]*\.jpg\)'
+if [ -f "$fundo" ] && grep -q "$velho" "$fundo"; then
+    sed -i "s#$velho#/usr/share/backgrounds/codeos-landscapes/\1#g" "$fundo"
+fi
 exec startxfce4

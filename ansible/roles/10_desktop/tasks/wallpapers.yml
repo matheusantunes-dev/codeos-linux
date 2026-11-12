@@ -1,15 +1,22 @@
-- name: Pasta dos papéis de parede
+- name: Pastas dos papéis de parede
   ansible.builtin.file:
-    path: "{{ desktop_wallpaper_dir }}"
+    path: "{{ item.value }}"
     state: directory
     mode: "0755"
+  loop: "{{ desktop_wallpaper_dirs | dict2items }}"
+  loop_control:
+    label: "{{ item.value }}"
   become: true
 
-# Sincroniza (e apaga os que saíram de assets/wallpapers) num comando só, em vez de uma cópia por arquivo.
+# Sincroniza (e apaga os que saíram de assets/wallpapers/<pasta>) num comando por pasta, em vez de uma cópia
+# por arquivo.
 - name: Papéis de parede e créditos
   ansible.builtin.command:
     argv: [rsync, -r, --checksum, --delete, "--chmod=D755,F644", "--include=*.jpg", --include=CREDITS.md, "--exclude=*",
-           --itemize-changes, "{{ codeos_repo }}/assets/wallpapers/", "{{ desktop_wallpaper_dir }}/"]
+           --itemize-changes, "{{ codeos_repo }}/assets/wallpapers/{{ item.key }}/", "{{ item.value }}/"]
+  loop: "{{ desktop_wallpaper_dirs | dict2items }}"
+  loop_control:
+    label: "{{ item.value }}"
   become: true
   register: desktop_wallpaper_sync
   changed_when: desktop_wallpaper_sync.stdout | length > 0

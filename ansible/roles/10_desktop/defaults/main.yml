@@ -90,9 +90,12 @@ desktop_taskbar_default_pins:
   - /usr/share/applications/firefox.desktop
   - /usr/share/applications/xfce4-terminal.desktop
 
-# Papéis de parede (assets/wallpapers, créditos em CREDITS.md) e o padrão da sessão.
-desktop_wallpaper_dir: /usr/share/backgrounds/codeos
-desktop_wallpaper_default: codeos-01-lofoten-reine.jpg
+# Papéis de parede: cada pasta de assets/wallpapers vira uma pasta em /usr/share/backgrounds (o seletor
+# do Xfce mostra uma pasta por vez), com os créditos no CREDITS.md de cada uma. E o padrão da sessão.
+desktop_wallpaper_dirs:
+  codeos: /usr/share/backgrounds/codeos                 # com o logo do CodeOS
+  landscapes: /usr/share/backgrounds/codeos-landscapes  # fotos de paisagens
+desktop_wallpaper_default: /usr/share/backgrounds/codeos-landscapes/codeos-01-lofoten-reine.jpg
 # Saídas de vídeo que recebem o papel de parede padrão (nomes do xrandr; "0"/"1" quando não há nome, como no Xephyr).
 desktop_wallpaper_monitors: [HDMI-1, HDMI-2, VGA-1, LVDS-1, eDP-1, DP-1, DP-2, Virtual-1, screen, "0", "1"]
 
