@@ -5,8 +5,8 @@
 #
 # - A chave fica num chaveiro só dela: ~/.local/share/codeos/chave-apt (fora do repositório).
 # - A parte pública vai para packages/codeos-archive-keyring.asc (entra no git e no pacote codeos).
-# - A parte secreta vai para o segredo CODEOS_GPG_PRIVATE_KEY do GitHub (pelo gh), que o workflow usa
-#   para assinar. Guarde também uma cópia offline: sem ela, quem já instalou não aceita uma chave nova.
+# - A parte secreta vai para o segredo CODEOS_GPG_PRIVATE_KEY do environment apt-signing do GitHub
+#   (pelo gh), que o workflow usa para assinar. O environment só libera o segredo para o main. Guarde também uma cópia offline: sem ela, quem já instalou não aceita uma chave nova.
 set -euo pipefail
 
 RAIZ=$(cd "$(dirname "$0")/.." && pwd)
@@ -27,13 +27,13 @@ gpg --batch --armor --export "$NOME" > "$PUB"
 echo "Chave pública: ${PUB#$RAIZ/} (faça commit dela)."
 
 if command -v gh >/dev/null && gh auth status >/dev/null 2>&1; then
-    read -r -p "Enviar a chave secreta para o segredo CODEOS_GPG_PRIVATE_KEY do GitHub? [s/N] " r
+    read -r -p "Enviar a chave secreta para o segredo CODEOS_GPG_PRIVATE_KEY (environment apt-signing)? [s/N] " r
     if [ "$r" = s ]; then
-        gpg --batch --armor --export-secret-keys "$NOME" | gh secret set CODEOS_GPG_PRIVATE_KEY -R matheusantunes-dev/codeos-linux
+        gpg --batch --armor --export-secret-keys "$NOME" | gh secret set CODEOS_GPG_PRIVATE_KEY --env apt-signing -R matheusantunes-dev/codeos-linux
         echo "Segredo enviado."
     fi
 else
-    echo "Para o GitHub Actions assinar: gh secret set CODEOS_GPG_PRIVATE_KEY (com a saída de"
+    echo "Para o GitHub Actions assinar: gh secret set CODEOS_GPG_PRIVATE_KEY --env apt-signing (com a saída de"
     echo "  GNUPGHOME=$GNUPGHOME gpg --armor --export-secret-keys \"$NOME\")"
 fi
 echo "Cópia offline (pendrive, gerenciador de senhas): GNUPGHOME=$GNUPGHOME gpg --armor --export-secret-keys \"$NOME\""

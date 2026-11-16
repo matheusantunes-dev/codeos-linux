@@ -1,6 +1,9 @@
 # Monta o pacote codeos e publica o repositório APT assinado no GitHub Pages a cada mudança no main.
-# Precisa, uma vez: o segredo CODEOS_GPG_PRIVATE_KEY (packages/gerar-chave.sh) e o Pages com a fonte
-# "GitHub Actions" (Settings > Pages).
+# Precisa, uma vez: o segredo CODEOS_GPG_PRIVATE_KEY no environment apt-signing (packages/gerar-chave.sh)
+# e o Pages com a fonte "GitHub Actions" (Settings > Pages).
+#
+# A chave mora no environment apt-signing, liberado só para o main: um workflow de outra branch não
+# recebe o segredo, então só assina o que passou pelo merge (como o github-pages, que já era assim).
 name: Pacotes e repositório APT
 
 on:
@@ -21,6 +24,7 @@ concurrency:
 jobs:
   construir:
     runs-on: ubuntu-24.04
+    environment: apt-signing
     steps:
       - uses: actions/checkout@v4
         with:
@@ -39,7 +43,7 @@ jobs:
         env:
           CHAVE: ${{ secrets.CODEOS_GPG_PRIVATE_KEY }}
         run: |
-          test -n "$CHAVE" || { echo "::error::falta o segredo CODEOS_GPG_PRIVATE_KEY (packages/gerar-chave.sh)"; exit 1; }
+          test -n "$CHAVE" || { echo "::error::falta o segredo CODEOS_GPG_PRIVATE_KEY no environment apt-signing (packages/gerar-chave.sh)"; exit 1; }
           printf '%s\n' "$CHAVE" | gpg --batch --import
 
       - name: Repositório APT

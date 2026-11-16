@@ -35,10 +35,14 @@ A versão é `<codeos_version>.<número de commits>`, então cada commit no `mai
 
 Cria a chave que assina o repositório (fora do git, em `~/.local/share/codeos/chave-apt`), grava a parte
 pública em `packages/codeos-archive-keyring.asc` e envia a secreta para o segredo
-`CODEOS_GPG_PRIVATE_KEY` do GitHub. Faça commit do `.asc`. Guarde uma cópia offline da chave secreta:
+`CODEOS_GPG_PRIVATE_KEY` do environment `apt-signing` do GitHub. Faça commit do `.asc`. Guarde uma cópia offline da chave secreta:
 sem ela, quem já instalou não aceita versões assinadas por uma chave nova.
 
-Depois, no GitHub: Settings → Pages → Source: **GitHub Actions**.
+Depois, no GitHub:
+- Settings → Pages → Source: **GitHub Actions**.
+- Settings → Environments → **New environment** `apt-signing` (antes do `gerar-chave.sh`, que envia o
+  segredo para ele) → Deployment branches: só **`main`**. Assim um workflow de outra branch não recebe
+  a chave; só assina o que passou pelo merge.
 
 ## Publicar
 
