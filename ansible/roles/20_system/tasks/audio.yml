@@ -20,6 +20,20 @@
     mode: "0644"
   become: true
 
+# O codeos-bt-audio lê as placas de som em JSON (jq) para manter cada fone num codec que ele aguenta.
+- name: jq para o serviço de fones
+  ansible.builtin.apt:
+    name: jq
+    state: present
+  become: true
+
+- name: Pasta de configuração do CodeOS
+  ansible.builtin.file:
+    path: /etc/codeos
+    state: directory
+    mode: "0755"
+  become: true
+
 - name: Fones Bluetooth reconectados e juntos (serviço de usuário)
   ansible.builtin.copy:
     src: "{{ item.src }}"
@@ -28,6 +42,8 @@
   loop:
     - { src: codeos-bt-audio, dest: /usr/local/bin/codeos-bt-audio, mode: "0755" }
     - { src: codeos-bt-audio.service, dest: /etc/systemd/user/codeos-bt-audio.service, mode: "0644" }
+    # fones que não aguentam o SBC-XQ (a pessoa acrescenta os dela em ~/.config/codeos/bt-sem-sbc-xq)
+    - { src: bt-sem-sbc-xq, dest: /etc/codeos/bt-sem-sbc-xq, mode: "0644" }
   become: true
 
 - name: Ligar o serviço de fones em todas as contas

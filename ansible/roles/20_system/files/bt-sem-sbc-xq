@@ -1,0 +1,4 @@
+# Fones Bluetooth que não aguentam o codec SBC-XQ (reiniciam segundos depois de o som começar).
+# Um nome por linha, igual ao que aparece no Bluetooth. O codeos-bt-audio deixa esses no SBC comum.
+# Este arquivo é do CodeOS e volta ao padrão nas atualizações: os seus vão em ~/.config/codeos/bt-sem-sbc-xq.
+DAPON H02D

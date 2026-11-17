@@ -12,6 +12,14 @@
 # mais devagar) é refeita quando muda a lista de saídas Bluetooth, inclusive quando uma saída é
 # recriada com o mesmo nome (reinício do WirePlumber, fone que cai e volta): pelo nome o combine
 # continuava apontando para a saída antiga e o som parava.
+#
+# Fones que não aguentam o SBC-XQ ficam no SBC comum: os de /etc/codeos/bt-sem-sbc-xq (do CodeOS) e os de
+# ~/.config/codeos/bt-sem-sbc-xq (da pessoa), um nome por linha.
+# O DAPON H02D reinicia sozinho ("power on") segundos depois de o som começar em SBC-XQ. O PipeWire não
+# escolhe codec por fone, e o BlueZ dá cada variante de SBC a um fone só; por isso, com dois fones, o
+# outro fica com o SBC-XQ. Se o SBC comum está livre, só troca o codec; se está com o outro fone, passa o
+# outro para o SBC-XQ e reconecta o fone da lista (no SBC-XQ ele já cairia de qualquer jeito). No máximo
+# uma reconexão por minuto por fone, para nunca virar um laço.
 set -u
 SINK=bluetooth_headphones_combined
 NOME_ANTIGO=fones_juntos_agora  # versões anteriores do CodeOS
@@ -19,6 +27,46 @@ NOME_ANTIGO=fones_juntos_agora  # versões anteriores do CodeOS
 DESCRICAO="Bluetooth Headphones (combined)"
 
 ultimo=""
+LISTAS_SEM_XQ=(/etc/codeos/bt-sem-sbc-xq "${XDG_CONFIG_HOME:-$HOME/.config}/codeos/bt-sem-sbc-xq")
+declare -A ultima_reconexao=()
+SBC=1 SBC_XQ=2  # ids do switch-codec do PipeWire (pelo nome não funciona)
+
+sem_xq() {  # o fone $1 (nome) está na lista dos que não aguentam SBC-XQ
+    cat "${LISTAS_SEM_XQ[@]}" 2>/dev/null | grep -vE '^\s*(#|$)' | grep -qxF -- "$1"
+}
+
+codec() { pactl send-message "/card/$1/bluez" get-codec 2>/dev/null | tr -d '"'; }
+trocar() { pactl send-message "/card/$1/bluez" switch-codec "\"$2\"" >/dev/null 2>&1; }
+
+proteger_codecs() {
+    local cartoes card nome mac outro agora
+    # "cartão<TAB>nome<TAB>endereço" de cada fone Bluetooth
+    cartoes=$(pactl -f json list cards 2>/dev/null | jq -r '.[] | select(.name | startswith("bluez_card.")) |
+        [.name, .properties["device.description"], .properties["api.bluez5.address"]] | @tsv' 2>/dev/null)
+    [ -n "$cartoes" ] || return
+    while IFS=$'\t' read -r card nome mac; do
+        sem_xq "$nome" && [ "$(codec "$card")" = "$SBC_XQ" ] || continue
+        # o SBC comum está com outro fone?
+        outro=""
+        while IFS=$'\t' read -r c _ _; do
+            [ "$c" != "$card" ] && [ "$(codec "$c")" = "$SBC" ] && outro=$c
+        done <<<"$cartoes"
+        if [ -z "$outro" ]; then
+            echo "$nome em SBC-XQ: trocando para SBC"
+            trocar "$card" "$SBC"
+            continue
+        fi
+        agora=$(date +%s)
+        (( agora - ${ultima_reconexao[$mac]:-0} >= 60 )) || continue
+        ultima_reconexao[$mac]=$agora
+        echo "$nome em SBC-XQ e o SBC com $outro: $outro vai para SBC-XQ e $nome reconecta em SBC"
+        bluetoothctl disconnect "$mac" >/dev/null
+        sleep 2
+        trocar "$outro" "$SBC_XQ"
+        sleep 2
+        bluetoothctl connect "$mac" >/dev/null
+    done <<<"$cartoes"
+}
 
 combines() {  # módulos combine-sink deste serviço (o atual e o de versões anteriores)
     pactl list short modules 2>/dev/null |
@@ -39,5 +87,6 @@ while true; do
         fi
         ultimo=$atual
     fi
-    sleep 5
+    proteger_codecs
+    sleep 3
 done
