@@ -29,6 +29,13 @@
   become: true
   when: maquina_copias.results | selectattr('changed') | map(attribute='item.dest') | select('search', 'udev') | list | length > 0
 
+# Sem isto o systemd só lê um drop-in novo (ex.: bluetooth.service.d) no próximo boot.
+- name: Recarregar as unidades do systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
+  when: maquina_copias.results | selectattr('changed') | map(attribute='item.dest') | select('search', '^/etc/systemd/') | list | length > 0
+
 - name: Parâmetros do kernel desta máquina
   ansible.builtin.copy:
     dest: /etc/default/grub.d/90-codeos-maquina.cfg

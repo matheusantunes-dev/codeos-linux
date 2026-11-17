@@ -1,0 +1,8 @@
+# Configuração só deste notebook (Acer Nitro, Intel + RTX 4060, Bluetooth MediaTek MT7922). O site.yml
+# carrega maquinas/<nome do computador>.yml quando ele existe; em outra máquina, e na ISO, nada daqui vale.
+# Os arquivos ficam em maquinas/matheusantunesdev-nitroanv1552/.
+
+maquina_arquivos:
+  # BlueZ sem o módulo de teclado/mouse Bluetooth (HID): o bluetoothd 5.72 travava quando o canal HID dos
+  # botões do fone DAPON conectava, e todos os fones caíam. Play/volume continuam pelo AVRCP.
+  - { src: bluetooth-sem-hid.conf, dest: /etc/systemd/system/bluetooth.service.d/codeos-sem-hid.conf }
